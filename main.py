@@ -7,7 +7,7 @@ cor1 = "#3b3b3b"  # preta
 cor2 = "#feffff"  # branca
 cor3 = "#38576b"  # azul
 cor4 = "#ECEFF1"  # cinzenta
-cor5 = "#FFAB40"  # laranj
+cor5 = "#FFAB40"  # laranja
 
 #Criar uma janela
 janela = Tk()
