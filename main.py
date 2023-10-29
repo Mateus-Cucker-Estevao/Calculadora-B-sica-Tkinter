@@ -39,6 +39,7 @@ def entrar_valores(event):
 def calcular():
     global todos_valores
     resultado = eval(todos_valores)
+    todos_valores = ""
     valor_texto.set(str(resultado))
 
 
