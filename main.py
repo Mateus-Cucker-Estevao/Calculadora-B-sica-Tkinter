@@ -13,6 +13,7 @@ cor5 = "#FFAB40"  # laranja
 janela = Tk()
 janela.title("Calculadora")
 janela.geometry("235x310")
+janela.resizable(width=False, height=False)
 janela.config(bg=cor1)
 
 #Divisao do visor
