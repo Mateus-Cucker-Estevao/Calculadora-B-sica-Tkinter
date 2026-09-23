@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Avaliador de Corridas</string>
+    <string name="servico_nome">Avaliador de Corridas</string>
+    <string name="servico_descricao">Lê o texto das ofertas de corrida no app Uber Driver e avisa por voz e com um banner colorido se a corrida atende aos seus critérios. O app APENAS lê: nunca toca em botões, nunca aceita nem recusa corridas. Nenhum dado sai do celular.</string>
+    <string name="tile_nome">Avaliador</string>
+</resources>

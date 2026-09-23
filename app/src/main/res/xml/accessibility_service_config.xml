@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Configuração do serviço de acessibilidade.
+
+    - packageNames: o serviço SÓ recebe eventos do app Uber Driver.
+    - canRetrieveWindowContent: permite ler o texto da tela.
+    - NÃO há "canPerformGestures": o serviço não tem capacidade de tocar na tela.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeWindowsChanged"
+    android:accessibilityFeedbackType="feedbackSpoken"
+    android:accessibilityFlags="flagIncludeNotImportantViews|flagReportViewIds|flagRetrieveInteractiveWindows"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/servico_descricao"
+    android:notificationTimeout="200"
+    android:packageNames="com.ubercab.driver" />
