@@ -8,9 +8,13 @@ data class Configuracao(
     val minimoPorKm: Double = 1.80,
     val minimoCorrida: Double = 8.00,
     val maxKmAtePassageiro: Double = 4.0,
+    /** Ganho mínimo por hora de corrida: valor ÷ (minutos de busca + viagem) × 60. */
+    val minimoPorHora: Double = 45.0,
+    /** Nota do passageiro abaixo disso deixa a corrida amarela (não reprova sozinha). */
+    val notaMinima: Double = 4.80,
     /** Até quantos % acima do mínimo a corrida é "amarela" (no limite). */
     val margemAmareloPct: Int = 10,
-    /** Se true, o R$/km é calculado com (busca + viagem). Se false, só com a viagem. */
+    /** Se true, R$/km e R$/hora usam (busca + viagem). Se false, só a viagem. */
     val incluirBuscaNoCalculo: Boolean = true,
     /** Tempo MÍNIMO do banner. Com a voz ligada, ele fica até a voz terminar de falar. */
     val segundosBanner: Int = 6,

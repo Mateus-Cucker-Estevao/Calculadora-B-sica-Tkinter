@@ -13,8 +13,8 @@ android {
         applicationId = "com.mateus.avaliadorcorridas"
         minSdk = 29 // Android 10
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "1.4"
 
         // Só processadores de celular (deixa o APK menor por causa do ML Kit).
         ndk {

@@ -100,6 +100,17 @@ object RegrasExtracao {
     val TEMPO_E_DISTANCIA_GENERICO = Regex(TEMPO_DIST, I)
 
     // ---------------------------------------------------------------
+    // 3b) NOTA DO PASSAGEIRO
+    // ---------------------------------------------------------------
+
+    /**
+     * Linha só com a nota, ex.: "★ 4,87", "4,95 ★", "4,74 (41)".
+     * A estrela é opcional (a leitura por imagem às vezes troca por "*" ou nem lê).
+     * Guarda o número no grupo "nota". Notas acima de 5 são ignoradas.
+     */
+    val NOTA = Regex("""(?m)^\s*[^\w\s]?\s*(?<nota>[1-5][.,]\d{1,2})\s*[^\w\s]?\s*(?:\(\d+\))?\s*$""")
+
+    // ---------------------------------------------------------------
     // 4) DESTINO
     // ---------------------------------------------------------------
 

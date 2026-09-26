@@ -261,6 +261,8 @@ private fun CartaoCriterios(cfg: Configuracao, onSalvar: (Configuracao) -> Unit)
     var porKm by remember { mutableStateOf(String.format(BR, "%.2f", cfg.minimoPorKm)) }
     var minimo by remember { mutableStateOf(String.format(BR, "%.2f", cfg.minimoCorrida)) }
     var maxBusca by remember { mutableStateOf(String.format(BR, "%.1f", cfg.maxKmAtePassageiro)) }
+    var porHora by remember { mutableStateOf(String.format(BR, "%.0f", cfg.minimoPorHora)) }
+    var notaMinima by remember { mutableStateOf(String.format(BR, "%.2f", cfg.notaMinima)) }
     var margem by remember { mutableStateOf(cfg.margemAmareloPct.toString()) }
     var segundos by remember { mutableStateOf(cfg.segundosBanner.toString()) }
 
@@ -268,6 +270,8 @@ private fun CartaoCriterios(cfg: Configuracao, onSalvar: (Configuracao) -> Unit)
         CampoNumero("Valor mínimo por km (R$/km)", porKm) { porKm = it }
         CampoNumero("Valor mínimo da corrida (R$)", minimo) { minimo = it }
         CampoNumero("Distância máxima até o passageiro (km)", maxBusca) { maxBusca = it }
+        CampoNumero("Ganho mínimo por hora (R$/h)", porHora) { porHora = it }
+        CampoNumero("Nota mínima do passageiro (abaixo fica amarelo)", notaMinima) { notaMinima = it }
         CampoNumero("Margem do amarelo \"no limite\" (%)", margem) { margem = it }
         CampoNumero("Tempo mínimo do banner (segundos)", segundos) { segundos = it }
 
@@ -277,6 +281,9 @@ private fun CartaoCriterios(cfg: Configuracao, onSalvar: (Configuracao) -> Unit)
                     minimoPorKm = ExtratorOferta.numero(porKm) ?: return@Button erro(ctx, "Valor por km inválido"),
                     minimoCorrida = ExtratorOferta.numero(minimo) ?: return@Button erro(ctx, "Valor mínimo inválido"),
                     maxKmAtePassageiro = ExtratorOferta.numero(maxBusca) ?: return@Button erro(ctx, "Distância inválida"),
+                    minimoPorHora = ExtratorOferta.numero(porHora) ?: return@Button erro(ctx, "Ganho por hora inválido"),
+                    notaMinima = ExtratorOferta.numero(notaMinima)?.coerceIn(1.0, 5.0)
+                        ?: return@Button erro(ctx, "Nota mínima inválida"),
                     margemAmareloPct = margem.trim().toIntOrNull()?.coerceIn(0, 100)
                         ?: return@Button erro(ctx, "Margem inválida"),
                     segundosBanner = segundos.trim().toIntOrNull()?.coerceIn(1, 30)
@@ -288,7 +295,7 @@ private fun CartaoCriterios(cfg: Configuracao, onSalvar: (Configuracao) -> Unit)
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Salvar critérios") }
 
-        LinhaSwitch("Contar a distância até o passageiro no R$/km", cfg.incluirBuscaNoCalculo) {
+        LinhaSwitch("Contar a busca (até o passageiro) no R$/km e no R$/h", cfg.incluirBuscaNoCalculo) {
             onSalvar(cfg.copy(incluirBuscaNoCalculo = it))
         }
         LinhaSwitch("Aviso por voz", cfg.vozAtiva) { onSalvar(cfg.copy(vozAtiva = it)) }
@@ -296,7 +303,7 @@ private fun CartaoCriterios(cfg: Configuracao, onSalvar: (Configuracao) -> Unit)
             onSalvar(cfg.copy(falarPontosFortes = it))
         }
         Text(
-            "Com a voz ligada, o banner fica na tela até a voz terminar de falar o diagnóstico inteiro. " +
+            "Com a voz ligada, o painel fica na tela até a voz terminar de falar o diagnóstico inteiro. " +
                 "Desligue \"pontos fortes\" se quiser um aviso mais curto (só o que está ruim ou no limite).",
             fontSize = 13.sp,
         )

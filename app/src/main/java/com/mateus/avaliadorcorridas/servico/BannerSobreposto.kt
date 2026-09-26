@@ -16,20 +16,30 @@ import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.mateus.avaliadorcorridas.regras.Cor
+import com.mateus.avaliadorcorridas.regras.Indicador
+import com.mateus.avaliadorcorridas.regras.Painel
 import com.mateus.avaliadorcorridas.regras.Resultado
 
 /**
- * Banner colorido no topo da tela com o diagnóstico da corrida.
+ * Painel flutuante no topo da tela, no modelo do GigU:
+ *
+ *   ┌──────────── borda verde / amarela / vermelha ────────────┐
+ *   │  ✅ R$ 19,59    11,4 km    24 min    ✅ Busca 2,9 km       │
+ *   │ ─────────────────────────────────────────────────────── │
+ *   │   R$/km   │    R$/h    │   R$/min   │    Nota            │
+ *   │  ❌ 1,72  │  ⚠️ 49     │  ⚠️ 0,82   │  ✅ 4,87           │
+ *   │  🚫 Destino bloqueado: Cocal do Sul   (só se bloqueado)   │
+ *   └───────────────────────────────────────────────────────────┘
+ *
+ * A cor da BORDA é o resultado geral (a do pior critério).
  *
  * Quanto tempo fica na tela:
  *   - com voz: até a voz terminar de falar tudo (+1,5 s), respeitando o tempo mínimo;
- *   - sem voz: o tempo mínimo, mais 2 s para cada ponto do diagnóstico.
+ *   - sem voz: o tempo mínimo, mais 2 s para cada ponto do diagnóstico;
  *   - nunca mais que [MAXIMO_MS] (segurança, caso a voz falhe).
  *
- * Usa uma janela do tipo TYPE_ACCESSIBILITY_OVERLAY, que o serviço de acessibilidade pode
- * desenhar SEM precisar da permissão "Sobrepor a outros apps".
- * O banner é "não tocável" (FLAG_NOT_TOUCHABLE): seus toques passam direto para o Uber,
- * então ele nunca atrapalha nem aperta nada.
+ * Usa uma janela TYPE_ACCESSIBILITY_OVERLAY (não precisa da permissão "Sobrepor a outros
+ * apps") e é "não tocável": seus toques passam direto para o Uber.
  */
 class BannerSobreposto(private val servico: AccessibilityService) {
 
@@ -37,6 +47,13 @@ class BannerSobreposto(private val servico: AccessibilityService) {
         private const val MAXIMO_MS = 30_000L
         private const val DEPOIS_DA_VOZ_MS = 1_500L
         private const val POR_PONTO_SEM_VOZ_MS = 2_000L
+
+        private val VERDE = Color.rgb(46, 125, 50)
+        private val AMARELO = Color.rgb(255, 214, 0)
+        private val VERMELHO = Color.rgb(198, 40, 40)
+        private val TEXTO = Color.rgb(33, 33, 33)
+        private val TEXTO_CLARO = Color.rgb(117, 117, 117)
+        private val DIVISORIA = Color.rgb(224, 224, 224)
     }
 
     private val wm = servico.getSystemService(WindowManager::class.java)
@@ -49,35 +66,28 @@ class BannerSobreposto(private val servico: AccessibilityService) {
     /** [aguardarVoz] = true: fica até alguém chamar [vozTerminou] (ou até o máximo). */
     fun mostrar(r: Resultado, segundosMinimos: Int, aguardarVoz: Boolean) {
         remover()
+        val painel = r.painel ?: return
 
-        val (fundo, corTexto) = coresDe(r.cor)
-        val caixa = LinearLayout(servico).apply {
+        // Borda colorida (resultado geral) com o cartão branco dentro.
+        val borda = LinearLayout(servico).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(10), dp(16), dp(10))
-            background = GradientDrawable().apply {
-                setColor(fundo)
-                cornerRadius = dp(16).toFloat()
-            }
-            addView(TextView(servico).apply {
-                text = r.titulo
-                setTextColor(corTexto)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 24f)
-                typeface = Typeface.DEFAULT_BOLD
+            setPadding(dp(7), dp(7), dp(7), dp(7))
+            background = retangulo(corDe(r.cor), 18)
+        }
+        val cartao = LinearLayout(servico).apply {
+            orientation = LinearLayout.VERTICAL
+            background = retangulo(Color.WHITE, 12)
+        }
+        borda.addView(cartao)
+
+        cartao.addView(linhaDeCima(painel))
+        cartao.addView(divisoriaHorizontal())
+        cartao.addView(linhaDeMetricas(painel))
+        painel.destinoBloqueado?.let { destino ->
+            cartao.addView(divisoriaHorizontal())
+            cartao.addView(texto("🚫 Destino bloqueado: $destino", 16f, VERMELHO, negrito = true).apply {
                 gravity = Gravity.CENTER
-            })
-            r.pontos.forEach { p ->
-                addView(TextView(servico).apply {
-                    text = "${marcador(p.cor)}  ${p.texto}"
-                    setTextColor(corTexto)
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-                })
-            }
-            addView(TextView(servico).apply {
-                text = r.detalhes
-                setTextColor(corTexto)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                gravity = Gravity.CENTER
-                setPadding(0, dp(4), 0, 0)
+                setPadding(dp(8), dp(6), dp(8), dp(8))
             })
         }
 
@@ -91,13 +101,13 @@ class BannerSobreposto(private val servico: AccessibilityService) {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP
-            y = dp(40)
+            y = dp(36)
             horizontalMargin = 0.03f
         }
 
         try {
-            wm.addView(caixa, params)
-            atual = caixa
+            wm.addView(borda, params)
+            atual = borda
             mostradoEm = SystemClock.uptimeMillis()
             minimoMs = segundosMinimos.coerceIn(1, 30) * 1000L
             val duracao = if (aguardarVoz) MAXIMO_MS else minimoMs + r.pontos.size * POR_PONTO_SEM_VOZ_MS
@@ -124,17 +134,85 @@ class BannerSobreposto(private val servico: AccessibilityService) {
         atual = null
     }
 
-    private fun coresDe(cor: Cor): Pair<Int, Int> = when (cor) {
-        Cor.VERDE -> Color.rgb(46, 125, 50) to Color.WHITE
-        Cor.AMARELO -> Color.rgb(255, 193, 7) to Color.BLACK
-        Cor.VERMELHO -> Color.rgb(198, 40, 40) to Color.WHITE
+    // ---------------------------------------------------------------------
+    // Montagem das linhas
+    // ---------------------------------------------------------------------
+
+    /** Valor · km total · minutos totais · busca. */
+    private fun linhaDeCima(p: Painel) = LinearLayout(servico).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(8), dp(10), dp(8), dp(10))
+        addView(celulaDeCima("${marcador(p.valor.cor)} ${p.valor.texto}"), peso(1.3f))
+        addView(celulaDeCima("🛣️ ${p.kmTotal}"), peso(1f))
+        addView(celulaDeCima("🕒 ${p.minTotal}"), peso(1f))
+        addView(celulaDeCima("${marcador(p.busca.cor)} Busca\n${p.busca.texto}"), peso(1.1f))
     }
 
-    private fun marcador(cor: Cor): String = when (cor) {
+    /** R$/km | R$/h | R$/min | Nota. */
+    private fun linhaDeMetricas(p: Painel) = LinearLayout(servico).apply {
+        orientation = LinearLayout.HORIZONTAL
+        setPadding(0, dp(8), 0, dp(10))
+        val colunas = listOf("R$/km" to p.porKm, "R$/h" to p.porHora, "R$/min" to p.porMinuto, "Nota" to p.nota)
+        colunas.forEachIndexed { i, (rotulo, indicador) ->
+            if (i > 0) addView(divisoriaVertical())
+            addView(coluna(rotulo, indicador), peso(1f))
+        }
+    }
+
+    private fun celulaDeCima(conteudo: String) = texto(conteudo, 16f, TEXTO, negrito = true).apply {
+        gravity = Gravity.CENTER
+        maxLines = 2
+    }
+
+    private fun coluna(rotulo: String, indicador: Indicador) = LinearLayout(servico).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER_HORIZONTAL
+        addView(texto(rotulo, 14f, TEXTO_CLARO).apply { gravity = Gravity.CENTER })
+        addView(texto("${marcador(indicador.cor)} ${indicador.texto}", 18f, TEXTO, negrito = true).apply {
+            gravity = Gravity.CENTER
+            maxLines = 1
+        })
+    }
+
+    private fun texto(conteudo: String, tamanhoSp: Float, cor: Int, negrito: Boolean = false) =
+        TextView(servico).apply {
+            text = conteudo
+            setTextColor(cor)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, tamanhoSp)
+            if (negrito) typeface = Typeface.DEFAULT_BOLD
+        }
+
+    private fun divisoriaHorizontal() = View(servico).apply {
+        setBackgroundColor(DIVISORIA)
+        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1))
+    }
+
+    private fun divisoriaVertical() = View(servico).apply {
+        setBackgroundColor(DIVISORIA)
+        layoutParams = LinearLayout.LayoutParams(dp(1), LinearLayout.LayoutParams.MATCH_PARENT)
+    }
+
+    private fun peso(p: Float) = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, p)
+
+    private fun retangulo(cor: Int, raioDp: Int) = GradientDrawable().apply {
+        setColor(cor)
+        cornerRadius = dp(raioDp).toFloat()
+    }
+
+    private fun corDe(cor: Cor): Int = when (cor) {
+        Cor.VERDE -> VERDE
+        Cor.AMARELO -> AMARELO
+        Cor.VERMELHO -> VERMELHO
+    }
+
+    /** ✅ bom · ⚠️ no limite · ❌ ruim · (vazio) não deu para avaliar. */
+    private fun marcador(cor: Cor?): String = when (cor) {
         Cor.VERDE -> "✅"
         Cor.AMARELO -> "⚠️"
         Cor.VERMELHO -> "❌"
-    }
+        null -> ""
+    }.trim()
 
     private fun dp(v: Int): Int = (v * servico.resources.displayMetrics.density).toInt()
 }

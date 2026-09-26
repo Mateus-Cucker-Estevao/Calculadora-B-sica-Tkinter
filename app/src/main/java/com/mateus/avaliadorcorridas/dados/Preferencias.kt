@@ -24,6 +24,8 @@ object Preferencias {
             minimoPorKm = p.getFloat("minimoPorKm", padrao.minimoPorKm.toFloat()).toDouble(),
             minimoCorrida = p.getFloat("minimoCorrida", padrao.minimoCorrida.toFloat()).toDouble(),
             maxKmAtePassageiro = p.getFloat("maxKmBusca", padrao.maxKmAtePassageiro.toFloat()).toDouble(),
+            minimoPorHora = p.getFloat("minimoPorHora", padrao.minimoPorHora.toFloat()).toDouble(),
+            notaMinima = p.getFloat("notaMinima", padrao.notaMinima.toFloat()).toDouble(),
             margemAmareloPct = p.getInt("margemAmarelo", padrao.margemAmareloPct),
             incluirBuscaNoCalculo = p.getBoolean("incluirBusca", padrao.incluirBuscaNoCalculo),
             segundosBanner = p.getInt("segundosBanner", padrao.segundosBanner),
@@ -40,6 +42,8 @@ object Preferencias {
             .putFloat("minimoPorKm", c.minimoPorKm.toFloat())
             .putFloat("minimoCorrida", c.minimoCorrida.toFloat())
             .putFloat("maxKmBusca", c.maxKmAtePassageiro.toFloat())
+            .putFloat("minimoPorHora", c.minimoPorHora.toFloat())
+            .putFloat("notaMinima", c.notaMinima.toFloat())
             .putInt("margemAmarelo", c.margemAmareloPct)
             .putBoolean("incluirBusca", c.incluirBuscaNoCalculo)
             .putInt("segundosBanner", c.segundosBanner)

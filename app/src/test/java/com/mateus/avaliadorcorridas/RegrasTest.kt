@@ -114,8 +114,8 @@ class RegrasTest {
         val r = Avaliador.avaliar(o, cfg)
         assertEquals(Cor.VERDE, r.cor)
         assertEquals(
-            "Corrida boa. Pontos fortes: destino liberado; passageiro perto, 1,0 quilômetros; " +
-                "valor acima do mínimo, 25 reais; bom valor por quilômetro, 2 reais e 50 centavos.",
+            "Corrida boa. Pontos fortes: passageiro perto, 1,0 quilômetros; valor acima do mínimo, 25 reais; " +
+                "bom valor por quilômetro, 2 reais e 50 centavos; bom ganho por hora, 88 reais; nota boa, 4,95.",
             r.fala,
         )
     }
@@ -160,8 +160,9 @@ class RegrasTest {
         assertEquals(Cor.VERMELHO, r.cor)
         assertEquals(
             "Corrida ruim. Pontos fracos: barata demais, 1 real e 60 centavos por quilômetro. " +
-                "Pontos fortes: destino liberado; passageiro perto, 2,7 quilômetros; " +
-                "valor acima do mínimo, 9 reais e 73 centavos.",
+                "No limite: por hora no limite, 49 reais. " +
+                "Pontos fortes: passageiro perto, 2,7 quilômetros; valor acima do mínimo, 9 reais e 73 centavos; " +
+                "nota boa, 4,94.",
             r.fala,
         )
     }
@@ -184,7 +185,9 @@ class RegrasTest {
         assertEquals(Cor.VERMELHO, r.cor)
         assertTrue(r.fala.contains("passageiro longe, 11,4 quilômetros"))
         assertTrue(r.fala.contains("barata demais, 1 real e 9 centavos por quilômetro"))
-        assertTrue(r.fala.contains("Pontos fortes: destino liberado; valor acima do mínimo, 12 reais e 40 centavos"))
+        assertTrue(r.fala.contains("pouco por hora, 41 reais por hora"))
+        assertTrue(r.fala.contains("No limite: nota do passageiro baixa, 4,74"))
+        assertTrue(r.fala.contains("Pontos fortes: valor acima do mínimo, 12 reais e 40 centavos"))
         assertEquals(Cor.VERMELHO, r.pontos.first().cor)
     }
 
@@ -199,12 +202,12 @@ class RegrasTest {
         // Busca 3,8 km (entre 3,6 e 4,0), valor R$ 8,50 (entre 8,00 e 8,80) e
         // R$ 8,50 / 4,3 km = R$ 1,98/km (entre 1,80 e 1,98): tudo "no limite".
         val o = ExtratorOferta.extrair(oferta("8,50", "9 min (3,8 km)", "3 min (0,5 km)", "Centro, Criciúma"))
-        val r = Avaliador.avaliar(o, cfg)
+        val r = Avaliador.avaliar(o, cfg.copy(minimoPorHora = 30.0))
         assertEquals(Cor.AMARELO, r.cor)
         assertEquals(
             "Corrida no limite. No limite: passageiro um pouco longe, 3,8 quilômetros; " +
                 "valor perto do mínimo, 8 reais e 50 centavos; no limite, 1 real e 98 centavos por quilômetro. " +
-                "Pontos fortes: destino liberado.",
+                "Pontos fortes: bom ganho por hora, 43 reais; nota boa, 4,95.",
             r.fala,
         )
     }
@@ -213,8 +216,60 @@ class RegrasTest {
     fun semPontosFortesAFalaFicaCurta() {
         val o = ExtratorOferta.extrair(oferta("12,50", "8 min (2,3 km)", "15 min (7,4 km)", "Centro, Criciúma"))
         val r = Avaliador.avaliar(o, cfg.copy(falarPontosFortes = false))
-        assertEquals("Corrida ruim. Pontos fracos: barata demais, 1 real e 29 centavos por quilômetro.", r.fala)
-        assertEquals(4, r.pontos.size) // o banner continua mostrando tudo
+        assertEquals(
+            "Corrida ruim. Pontos fracos: barata demais, 1 real e 29 centavos por quilômetro; pouco por hora, 33 reais por hora.",
+            r.fala,
+        )
+        assertEquals(5, r.pontos.size) // o texto da tela de teste continua mostrando tudo
+    }
+
+    // ---- Painel flutuante (modelo GigU) ----
+
+    @Test
+    fun painelDaOfertaDoPrintGigU() {
+        // Print enviado em 26/09/2026. O GigU mostrou: 11.40 km, 24 min, $/Km 1.72, $/Hr 49.2, $/Min 0.82, Nota 4.87.
+        val o = ExtratorOferta.extrair(
+            listOf(
+                "UberX", "Exclusivo", "R$ 19,59", "★ 4,87",
+                "6 minutos (2.9 km) de distância", "Av. Presidente Kennedy, Santa Isabel", "e arredores",
+                "Viagem de 18 minutos (8.5 km)", "Rua Vereador Joel Loureiro, 7690 -",
+                "Pedra Mole - Teresina - PI, 64066-050", "Várias paradas", "Aceitar",
+            ),
+        )
+        assertEquals(19.59, o.valor!!, 0.001)
+        assertEquals(4.87, o.nota!!, 0.001)
+        val p = Avaliador.avaliar(o, cfg).painel!!
+        assertEquals("R$ 19,59", p.valor.texto)
+        assertEquals("11,4 km", p.kmTotal)
+        assertEquals("24 min", p.minTotal)
+        assertEquals("2,9 km", p.busca.texto)
+        assertEquals("1,72", p.porKm.texto)
+        assertEquals(Cor.VERMELHO, p.porKm.cor) // 1,72 < 1,80
+        assertEquals("49", p.porHora.texto)
+        assertEquals(Cor.AMARELO, p.porHora.cor) // 49 fica entre 45 e 49,50
+        assertEquals("0,82", p.porMinuto.texto)
+        assertEquals("4,87", p.nota.texto)
+        assertEquals(Cor.VERDE, p.nota.cor)
+        assertNull(p.destinoBloqueado)
+    }
+
+    @Test
+    fun leNotaEmVariosFormatos() {
+        fun nota(linha: String) = ExtratorOferta.extrair(listOf("R$ 10,00", linha, "5 min (2 km)", "10 min (5 km)")).nota
+        assertEquals(4.87, nota("★ 4,87")!!, 0.001)
+        assertEquals(4.87, nota("* 4.87")!!, 0.001)
+        assertEquals(4.95, nota("4,95 ★")!!, 0.001)
+        assertEquals(4.74, nota("4,74 (41)")!!, 0.001)
+        assertNull(nota("R$ 4,50"))
+        assertNull(nota("Verificado"))
+    }
+
+    @Test
+    fun notaBaixaSoDeixaAmarelo() {
+        val linhas = listOf("R$ 25,00", "3,90 ★", "2 min (1 km) de distância", "Viagem de 15 min (9 km)", "Centro")
+        val r = Avaliador.avaliar(ExtratorOferta.extrair(linhas), cfg)
+        assertEquals(Cor.AMARELO, r.cor)
+        assertTrue(r.fala.contains("nota do passageiro baixa, 3,90"))
     }
 
     @Test

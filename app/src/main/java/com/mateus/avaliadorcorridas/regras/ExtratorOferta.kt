@@ -10,6 +10,8 @@ data class Oferta(
     val minutosViagem: Int?,
     val kmViagem: Double?,
     val destino: String?,
+    /** Nota do passageiro (1 a 5), se aparecer na oferta. */
+    val nota: Double? = null,
     /** Texto onde procuramos destinos bloqueados (veja BLOQUEIO_PROCURA_APOS_VIAGEM). */
     val trechoDestino: String,
 ) {
@@ -21,7 +23,7 @@ data class Oferta(
 
     fun resumo(): String =
         "valor=${valor ?: "?"} | busca=${kmAtePassageiro ?: "?"} km (${minutosAtePassageiro ?: "?"} min)" +
-            " | viagem=${kmViagem ?: "?"} km (${minutosViagem ?: "?"} min) | destino=${destino ?: "?"}"
+            " | viagem=${kmViagem ?: "?"} km (${minutosViagem ?: "?"} min) | nota=${nota ?: "?"} | destino=${destino ?: "?"}"
 }
 
 /**
@@ -63,6 +65,9 @@ object ExtratorOferta {
             minutosViagem = viagem?.let { grupo(it, "min")?.toIntOrNull() },
             kmViagem = viagem?.let { km(it) },
             destino = extrairDestino(texto, viagem),
+            nota = RegrasExtracao.NOTA.find(texto)
+                ?.let { grupo(it, "nota") }?.let { numero(it) }
+                ?.takeIf { it in 1.0..5.0 },
             trechoDestino = trechoDestino,
         )
     }

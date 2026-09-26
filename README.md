@@ -116,17 +116,31 @@ git clone https://github.com/Mateus-Cucker-Estevao/Calculadora-B-sica-Tkinter.gi
 3. O **ExtratorOferta** usa as regras do **RegrasExtracao.kt** para achar valor, distâncias e destino.
 4. O **Avaliador** confere **todos** os seus critérios e monta um diagnóstico. Cada critério vira um
    ponto forte ✅, no limite ⚠️ ou fraco ❌:
-   - **destino**: bloqueado ❌ ou liberado ✅;
+   - **destino**: bloqueado ❌ (só aparece quando é bloqueado);
    - **distância até o passageiro**: longe ❌, um pouco longe ⚠️ ou perto ✅;
    - **valor mínimo da corrida**: abaixo ❌, perto do mínimo ⚠️ ou acima ✅;
-   - **R$/km**: barata demais ❌, no limite ⚠️ ou bom valor ✅.
+   - **R$/km**: barata demais ❌, no limite ⚠️ ou bom valor ✅;
+   - **R$/hora**: pouco por hora ❌, no limite ⚠️ ou bom ganho ✅;
+   - **nota do passageiro**: baixa ⚠️ ou boa ✅.
 
    A cor da corrida é a do pior ponto. "No limite" = até X% do limite (a "margem do amarelo").
    Exemplo de fala: *"Corrida ruim. Pontos fracos: passageiro longe, 11,4 quilômetros; barata demais,
    1 real e 9 centavos por quilômetro. Pontos fortes: destino liberado; valor acima do mínimo, 12 reais
    e 40 centavos."*
-5. O app fala o diagnóstico e mostra o banner com todos os pontos. Com a voz ligada, o banner fica
-   na tela até a voz terminar (a opção "Falar também os pontos fortes" deixa a fala mais curta).
+5. O app fala o diagnóstico e mostra um **painel flutuante** no topo da tela (modelo GigU):
+
+   ```
+   ┌──────────── borda verde / amarela / vermelha ────────────┐
+   │  ✅ R$ 19,59    🛣️ 11,4 km    🕒 24 min    ✅ Busca 2,9 km │
+   │   R$/km   │    R$/h    │   R$/min   │    Nota            │
+   │  ❌ 1,72  │  ⚠️ 49     │  ⚠️ 0,82   │  ✅ 4,87           │
+   └───────────────────────────────────────────────────────────┘
+   ```
+
+   A cor da borda é o resultado geral. Com a voz ligada, o painel fica na tela até a voz terminar
+   (a opção "Falar também os pontos fortes" deixa a fala mais curta).
+   - **R$/h** = valor ÷ (minutos de busca + viagem) × 60. **R$/min** usa o mesmo critério do R$/h.
+   - **Nota** do passageiro abaixo da nota mínima deixa amarelo, mas não reprova a corrida sozinha.
 
 **R$/km** = valor ÷ (distância até o passageiro + distância da viagem). Dá para desligar a opção
 "Contar a distância até o passageiro no R$/km" para usar só a distância da viagem.
