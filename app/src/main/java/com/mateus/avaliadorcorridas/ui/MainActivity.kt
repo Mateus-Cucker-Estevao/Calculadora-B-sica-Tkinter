@@ -273,7 +273,7 @@ private fun CartaoCriterios(cfg: Configuracao, onSalvar: (Configuracao) -> Unit)
         CampoNumero("Ganho mínimo por hora (R$/h)", porHora) { porHora = it }
         CampoNumero("Nota mínima do passageiro (abaixo fica amarelo)", notaMinima) { notaMinima = it }
         CampoNumero("Margem do amarelo \"no limite\" (%)", margem) { margem = it }
-        CampoNumero("Tempo mínimo do banner (segundos)", segundos) { segundos = it }
+        CampoNumero("Tempo do aviso no botão Testar (segundos)", segundos) { segundos = it }
 
         Button(
             onClick = {
@@ -303,8 +303,8 @@ private fun CartaoCriterios(cfg: Configuracao, onSalvar: (Configuracao) -> Unit)
             onSalvar(cfg.copy(falarPontosFortes = it))
         }
         Text(
-            "Com a voz ligada, o painel fica na tela até a voz terminar de falar o diagnóstico inteiro. " +
-                "Desligue \"pontos fortes\" se quiser um aviso mais curto (só o que está ruim ou no limite).",
+            "Nas ofertas reais, o aviso fica na tela enquanto a oferta estiver aparecendo e some quando ela sai. " +
+                "Desligue \"pontos fortes\" se quiser uma fala mais curta (só o que está ruim ou no limite).",
             fontSize = 13.sp,
         )
     }

@@ -127,19 +127,22 @@ git clone https://github.com/Mateus-Cucker-Estevao/Calculadora-B-sica-Tkinter.gi
    Exemplo de fala: *"Corrida ruim. Pontos fracos: passageiro longe, 11,4 quilômetros; barata demais,
    1 real e 9 centavos por quilômetro. Pontos fortes: destino liberado; valor acima do mínimo, 12 reais
    e 40 centavos."*
-5. O app fala o diagnóstico e mostra um **painel flutuante** no topo da tela (modelo GigU):
+5. O app fala o diagnóstico e mostra um **aviso flutuante** no topo da tela, com 6 informações:
 
    ```
    ┌──────────── borda verde / amarela / vermelha ────────────┐
-   │  ✅ R$ 19,59    🛣️ 11,4 km    🕒 24 min    ✅ Busca 2,9 km │
-   │   R$/km   │    R$/h    │   R$/min   │    Nota            │
-   │  ❌ 1,72  │  ⚠️ 49     │  ⚠️ 0,82   │  ✅ 4,87           │
+   │    ✅ Valor      │    ❌ R$/km     │     ✅ Nota          │
+   │    R$ 19,59      │      1,72       │      4,87            │
+   │ ─────────────────────────────────────────────────────── │
+   │ ✅ Até passageiro │ Distância total │ Tempo estimado       │
+   │      2,9 km       │    11,4 km      │    24 min            │
    └───────────────────────────────────────────────────────────┘
    ```
 
-   A cor da borda é o resultado geral. Com a voz ligada, o painel fica na tela até a voz terminar
-   (a opção "Falar também os pontos fortes" deixa a fala mais curta).
-   - **R$/h** = valor ÷ (minutos de busca + viagem) × 60. **R$/min** usa o mesmo critério do R$/h.
+   - A cor da borda é o resultado geral (a do pior critério, incluindo destino bloqueado e R$/h).
+   - O aviso **fica na tela enquanto a oferta estiver aparecendo** e some ~3 s depois que ela sai
+     (aceita, recusada ou expirada). No botão "Testar", fica um tempo fixo.
+   - **Distância total** = busca + viagem. **Tempo estimado** = minutos de busca + viagem.
    - **Nota** do passageiro abaixo da nota mínima deixa amarelo, mas não reprova a corrida sozinha.
 
 **R$/km** = valor ÷ (distância até o passageiro + distância da viagem). Dá para desligar a opção

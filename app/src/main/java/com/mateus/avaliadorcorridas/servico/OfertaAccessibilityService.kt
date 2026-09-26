@@ -62,6 +62,9 @@ class OfertaAccessibilityService : AccessibilityService() {
     private var ultimaChaveOferta = ""
     private var ultimaOfertaEm = 0L
 
+    /** Última vez (elapsedRealtime) que alguma leitura viu uma oferta na tela. O aviso usa isso para sumir. */
+    private var ofertaVistaEm = 0L
+
     private val lerAgora = Runnable {
         leituraAgendada = false
         lerTela()
@@ -155,6 +158,10 @@ class OfertaAccessibilityService : AccessibilityService() {
     // ---------------------------------------------------------------------
 
     private fun avaliarEAvisar(oferta: Oferta, cfg: Configuracao, podeReagendar: Boolean) {
+        // Só leituras POSITIVAS contam: a leitura da tela às vezes não enxerga a oferta
+        // (o Uber esconde), então "não vi" não significa que ela saiu.
+        if (oferta.ehOferta) ofertaVistaEm = SystemClock.elapsedRealtime()
+
         if (!cfg.monitorando || !oferta.ehOferta) {
             tentativasSemViagem = 0
             return
@@ -174,16 +181,16 @@ class OfertaAccessibilityService : AccessibilityService() {
         ultimaChaveOferta = oferta.chave
         ultimaOfertaEm = agora
 
-        anunciar(Avaliador.avaliar(oferta, cfg), cfg)
+        anunciar(Avaliador.avaliar(oferta, cfg), cfg, BannerSobreposto.Duracao.EnquantoOferta { ofertaVistaEm })
     }
 
     private fun descrever(oferta: Oferta): String =
         (if (oferta.ehOferta) "OFERTA  " else "(não é oferta)  ") + oferta.resumo()
 
-    private fun anunciar(r: Resultado, cfg: Configuracao) {
+    private fun anunciar(r: Resultado, cfg: Configuracao, duracao: BannerSobreposto.Duracao) {
         if (cfg.modoDiagnostico) LogDiagnostico.registrarNota(this, "AVISO ${r.cor}: \"${r.fala}\"  (${r.detalhes})")
-        banner.mostrar(r, cfg.segundosBanner, aguardarVoz = cfg.vozAtiva)
-        if (cfg.vozAtiva) falador.falar(r.fala) { banner.vozTerminou() }
+        banner.mostrar(r, duracao)
+        if (cfg.vozAtiva) falador.falar(r.fala)
     }
 
     /** Usado pela seção "Testar leitura" da tela principal. */
@@ -194,7 +201,8 @@ class OfertaAccessibilityService : AccessibilityService() {
             falador.falar("Nenhuma oferta encontrada no texto")
             return null
         }
-        return Avaliador.avaliar(oferta, cfg).also { anunciar(it, cfg) }
+        // No teste não há oferta real na tela, então o aviso fica um tempo fixo.
+        return Avaliador.avaliar(oferta, cfg).also { anunciar(it, cfg, BannerSobreposto.Duracao.Fixa(cfg.segundosBanner)) }
     }
 
     fun falar(texto: String) = falador.falar(texto)

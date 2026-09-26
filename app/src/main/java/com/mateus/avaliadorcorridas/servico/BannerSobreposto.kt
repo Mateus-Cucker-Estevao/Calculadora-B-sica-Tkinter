@@ -16,37 +16,44 @@ import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.mateus.avaliadorcorridas.regras.Cor
-import com.mateus.avaliadorcorridas.regras.Indicador
 import com.mateus.avaliadorcorridas.regras.Painel
 import com.mateus.avaliadorcorridas.regras.Resultado
 
 /**
- * Painel flutuante no topo da tela, no modelo do GigU:
+ * Aviso flutuante no topo da tela, com 6 informações em 2 linhas:
  *
  *   ┌──────────── borda verde / amarela / vermelha ────────────┐
- *   │  ✅ R$ 19,59    11,4 km    24 min    ✅ Busca 2,9 km       │
+ *   │   ✅ Valor      │    ❌ R$/km     │     ✅ Nota           │
+ *   │   R$ 19,59      │      1,72       │      4,87             │
  *   │ ─────────────────────────────────────────────────────── │
- *   │   R$/km   │    R$/h    │   R$/min   │    Nota            │
- *   │  ❌ 1,72  │  ⚠️ 49     │  ⚠️ 0,82   │  ✅ 4,87           │
- *   │  🚫 Destino bloqueado: Cocal do Sul   (só se bloqueado)   │
+ *   │ ✅ Até passageiro │ Distância total │ Tempo estimado       │
+ *   │     2,9 km        │    11,4 km      │    24 min            │
  *   └───────────────────────────────────────────────────────────┘
  *
  * A cor da BORDA é o resultado geral (a do pior critério).
  *
- * Quanto tempo fica na tela:
- *   - com voz: até a voz terminar de falar tudo (+1,5 s), respeitando o tempo mínimo;
- *   - sem voz: o tempo mínimo, mais 2 s para cada ponto do diagnóstico;
- *   - nunca mais que [MAXIMO_MS] (segurança, caso a voz falhe).
+ * Quanto tempo fica na tela ([Duracao]):
+ *   - oferta real: enquanto a oferta estiver na tela; some [SEM_OFERTA_MS] depois que ela sair
+ *     (aceita, recusada ou expirada);
+ *   - botão "Testar": um tempo fixo.
  *
  * Usa uma janela TYPE_ACCESSIBILITY_OVERLAY (não precisa da permissão "Sobrepor a outros
  * apps") e é "não tocável": seus toques passam direto para o Uber.
  */
 class BannerSobreposto(private val servico: AccessibilityService) {
 
+    sealed class Duracao {
+        /** Fica enquanto [ultimaVezVista] (elapsedRealtime da última leitura com oferta) for recente. */
+        class EnquantoOferta(val ultimaVezVista: () -> Long) : Duracao()
+        class Fixa(val segundos: Int) : Duracao()
+    }
+
     companion object {
-        private const val MAXIMO_MS = 30_000L
-        private const val DEPOIS_DA_VOZ_MS = 1_500L
-        private const val POR_PONTO_SEM_VOZ_MS = 2_000L
+        /** Some este tempo depois da última vez que a oferta foi vista na tela. */
+        private const val SEM_OFERTA_MS = 3_000L
+        private const val VERIFICAR_A_CADA_MS = 500L
+        /** Segurança: nunca fica mais que isso. */
+        private const val MAXIMO_MS = 90_000L
 
         private val VERDE = Color.rgb(46, 125, 50)
         private val AMARELO = Color.rgb(255, 214, 0)
@@ -60,11 +67,10 @@ class BannerSobreposto(private val servico: AccessibilityService) {
     private val handler = Handler(Looper.getMainLooper())
     private var atual: View? = null
     private var mostradoEm = 0L
-    private var minimoMs = 0L
+    private var verificador: Runnable? = null
     private val esconder = Runnable { remover() }
 
-    /** [aguardarVoz] = true: fica até alguém chamar [vozTerminou] (ou até o máximo). */
-    fun mostrar(r: Resultado, segundosMinimos: Int, aguardarVoz: Boolean) {
+    fun mostrar(r: Resultado, duracao: Duracao) {
         remover()
         val painel = r.painel ?: return
 
@@ -79,17 +85,9 @@ class BannerSobreposto(private val servico: AccessibilityService) {
             background = retangulo(Color.WHITE, 12)
         }
         borda.addView(cartao)
-
-        cartao.addView(linhaDeCima(painel))
+        cartao.addView(linha(celulasDeCima(painel)))
         cartao.addView(divisoriaHorizontal())
-        cartao.addView(linhaDeMetricas(painel))
-        painel.destinoBloqueado?.let { destino ->
-            cartao.addView(divisoriaHorizontal())
-            cartao.addView(texto("🚫 Destino bloqueado: $destino", 16f, VERMELHO, negrito = true).apply {
-                gravity = Gravity.CENTER
-                setPadding(dp(8), dp(6), dp(8), dp(8))
-            })
-        }
+        cartao.addView(linha(celulasDeBaixo(painel)))
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -108,26 +106,35 @@ class BannerSobreposto(private val servico: AccessibilityService) {
         try {
             wm.addView(borda, params)
             atual = borda
-            mostradoEm = SystemClock.uptimeMillis()
-            minimoMs = segundosMinimos.coerceIn(1, 30) * 1000L
-            val duracao = if (aguardarVoz) MAXIMO_MS else minimoMs + r.pontos.size * POR_PONTO_SEM_VOZ_MS
-            handler.postDelayed(esconder, duracao.coerceAtMost(MAXIMO_MS))
+            mostradoEm = SystemClock.elapsedRealtime()
+            agendarSaida(duracao)
         } catch (e: Exception) {
-            Log.e("BannerSobreposto", "Não foi possível mostrar o banner", e)
+            Log.e("BannerSobreposto", "Não foi possível mostrar o aviso", e)
         }
     }
 
-    /** A voz acabou: esconde daqui a pouco, mas nunca antes do tempo mínimo. */
-    fun vozTerminou() {
-        if (atual == null) return
-        val passou = SystemClock.uptimeMillis() - mostradoEm
-        val resta = maxOf(minimoMs - passou, 0L) + DEPOIS_DA_VOZ_MS
-        handler.removeCallbacks(esconder)
-        handler.postDelayed(esconder, resta)
+    private fun agendarSaida(duracao: Duracao) {
+        when (duracao) {
+            is Duracao.Fixa -> handler.postDelayed(esconder, duracao.segundos.coerceIn(1, 30) * 1000L)
+            is Duracao.EnquantoOferta -> {
+                val v = object : Runnable {
+                    override fun run() {
+                        val agora = SystemClock.elapsedRealtime()
+                        val ofertaSumiu = agora - duracao.ultimaVezVista() > SEM_OFERTA_MS
+                        if (ofertaSumiu || agora - mostradoEm > MAXIMO_MS) remover()
+                        else handler.postDelayed(this, VERIFICAR_A_CADA_MS)
+                    }
+                }
+                verificador = v
+                handler.postDelayed(v, VERIFICAR_A_CADA_MS)
+            }
+        }
     }
 
     fun remover() {
         handler.removeCallbacks(esconder)
+        verificador?.let { handler.removeCallbacks(it) }
+        verificador = null
         atual?.let {
             try { wm.removeView(it) } catch (_: Exception) {}
         }
@@ -135,41 +142,42 @@ class BannerSobreposto(private val servico: AccessibilityService) {
     }
 
     // ---------------------------------------------------------------------
-    // Montagem das linhas
+    // Montagem
     // ---------------------------------------------------------------------
 
-    /** Valor · km total · minutos totais · busca. */
-    private fun linhaDeCima(p: Painel) = LinearLayout(servico).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(8), dp(10), dp(8), dp(10))
-        addView(celulaDeCima("${marcador(p.valor.cor)} ${p.valor.texto}"), peso(1.3f))
-        addView(celulaDeCima("🛣️ ${p.kmTotal}"), peso(1f))
-        addView(celulaDeCima("🕒 ${p.minTotal}"), peso(1f))
-        addView(celulaDeCima("${marcador(p.busca.cor)} Busca\n${p.busca.texto}"), peso(1.1f))
-    }
+    /** Valor · R$/km · Nota (os três com ✅/⚠️/❌ conforme seus critérios). */
+    private fun celulasDeCima(p: Painel) = listOf(
+        celula("Valor", p.valor.cor, p.valor.texto),
+        celula("R$/km", p.porKm.cor, p.porKm.texto),
+        celula("Nota", p.nota.cor, p.nota.texto),
+    )
 
-    /** R$/km | R$/h | R$/min | Nota. */
-    private fun linhaDeMetricas(p: Painel) = LinearLayout(servico).apply {
+    /** Até o passageiro · Distância total · Tempo estimado. */
+    private fun celulasDeBaixo(p: Painel) = listOf(
+        celula("Até passageiro", p.busca.cor, p.busca.texto),
+        celula("Distância total", null, p.kmTotal),
+        celula("Tempo estimado", null, p.minTotal),
+    )
+
+    private fun linha(celulas: List<View>) = LinearLayout(servico).apply {
         orientation = LinearLayout.HORIZONTAL
-        setPadding(0, dp(8), 0, dp(10))
-        val colunas = listOf("R$/km" to p.porKm, "R$/h" to p.porHora, "R$/min" to p.porMinuto, "Nota" to p.nota)
-        colunas.forEachIndexed { i, (rotulo, indicador) ->
+        setPadding(0, dp(8), 0, dp(8))
+        celulas.forEachIndexed { i, c ->
             if (i > 0) addView(divisoriaVertical())
-            addView(coluna(rotulo, indicador), peso(1f))
+            addView(c, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         }
     }
 
-    private fun celulaDeCima(conteudo: String) = texto(conteudo, 16f, TEXTO, negrito = true).apply {
-        gravity = Gravity.CENTER
-        maxLines = 2
-    }
-
-    private fun coluna(rotulo: String, indicador: Indicador) = LinearLayout(servico).apply {
+    /** Rótulo pequeno (com o ✅/⚠️/❌ na frente) e o valor grande embaixo. */
+    private fun celula(rotulo: String, cor: Cor?, valor: String) = LinearLayout(servico).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
-        addView(texto(rotulo, 14f, TEXTO_CLARO).apply { gravity = Gravity.CENTER })
-        addView(texto("${marcador(indicador.cor)} ${indicador.texto}", 18f, TEXTO, negrito = true).apply {
+        val marca = marcador(cor)
+        addView(texto(if (marca.isEmpty()) rotulo else "$marca $rotulo", 13f, TEXTO_CLARO).apply {
+            gravity = Gravity.CENTER
+            maxLines = 1
+        })
+        addView(texto(valor, 21f, TEXTO, negrito = true).apply {
             gravity = Gravity.CENTER
             maxLines = 1
         })
@@ -193,8 +201,6 @@ class BannerSobreposto(private val servico: AccessibilityService) {
         layoutParams = LinearLayout.LayoutParams(dp(1), LinearLayout.LayoutParams.MATCH_PARENT)
     }
 
-    private fun peso(p: Float) = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, p)
-
     private fun retangulo(cor: Int, raioDp: Int) = GradientDrawable().apply {
         setColor(cor)
         cornerRadius = dp(raioDp).toFloat()
@@ -206,13 +212,13 @@ class BannerSobreposto(private val servico: AccessibilityService) {
         Cor.VERMELHO -> VERMELHO
     }
 
-    /** ✅ bom · ⚠️ no limite · ❌ ruim · (vazio) não deu para avaliar. */
+    /** ✅ bom · ⚠️ no limite · ❌ ruim · (vazio) sem critério ou não lido. */
     private fun marcador(cor: Cor?): String = when (cor) {
         Cor.VERDE -> "✅"
         Cor.AMARELO -> "⚠️"
         Cor.VERMELHO -> "❌"
         null -> ""
-    }.trim()
+    }
 
     private fun dp(v: Int): Int = (v * servico.resources.displayMetrics.density).toInt()
 }

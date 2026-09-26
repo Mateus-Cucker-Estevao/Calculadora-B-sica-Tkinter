@@ -16,7 +16,7 @@ data class Configuracao(
     val margemAmareloPct: Int = 10,
     /** Se true, R$/km e R$/hora usam (busca + viagem). Se false, só a viagem. */
     val incluirBuscaNoCalculo: Boolean = true,
-    /** Tempo MÍNIMO do banner. Com a voz ligada, ele fica até a voz terminar de falar. */
+    /** Tempo do aviso no botão "Testar". Nas ofertas reais, o aviso fica enquanto a oferta estiver na tela. */
     val segundosBanner: Int = 6,
     val vozAtiva: Boolean = true,
     /** Se false, a voz fala só os pontos fracos e os do limite (fica mais curta). */
