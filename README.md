@@ -114,15 +114,19 @@ git clone https://github.com/Mateus-Cucker-Estevao/Calculadora-B-sica-Tkinter.gi
    (ele só recebe avisos do pacote `com.ubercab.driver`).
 2. O serviço junta todos os textos da tela em uma lista de linhas.
 3. O **ExtratorOferta** usa as regras do **RegrasExtracao.kt** para achar valor, distâncias e destino.
-4. O **Avaliador** compara com seus critérios, nesta ordem:
-   1. destino bloqueado → 🔴 "Atenção: corrida para Cocal do Sul"
-   2. passageiro mais longe que o máximo → 🔴 "Passageiro longe"
-   3. valor abaixo do mínimo da corrida → 🔴 "Abaixo do mínimo"
-   4. distância da viagem não lida → 🟡 "Distância não lida"
-   5. R$/km abaixo do mínimo → 🔴 "Abaixo do mínimo: … por quilômetro"
-   6. até X% acima de algum limite (a "margem do amarelo") → 🟡 "No limite: … por quilômetro"
-   7. senão → 🟢 "Corrida boa: 2 reais e 10 centavos por quilômetro"
-5. O app fala o aviso e mostra o banner por alguns segundos.
+4. O **Avaliador** confere **todos** os seus critérios e monta um diagnóstico. Cada critério vira um
+   ponto forte ✅, no limite ⚠️ ou fraco ❌:
+   - **destino**: bloqueado ❌ ou liberado ✅;
+   - **distância até o passageiro**: longe ❌, um pouco longe ⚠️ ou perto ✅;
+   - **valor mínimo da corrida**: abaixo ❌, perto do mínimo ⚠️ ou acima ✅;
+   - **R$/km**: barata demais ❌, no limite ⚠️ ou bom valor ✅.
+
+   A cor da corrida é a do pior ponto. "No limite" = até X% do limite (a "margem do amarelo").
+   Exemplo de fala: *"Corrida ruim. Pontos fracos: passageiro longe, 11,4 quilômetros; barata demais,
+   1 real e 9 centavos por quilômetro. Pontos fortes: destino liberado; valor acima do mínimo, 12 reais
+   e 40 centavos."*
+5. O app fala o diagnóstico e mostra o banner com todos os pontos. Com a voz ligada, o banner fica
+   na tela até a voz terminar (a opção "Falar também os pontos fortes" deixa a fala mais curta).
 
 **R$/km** = valor ÷ (distância até o passageiro + distância da viagem). Dá para desligar a opção
 "Contar a distância até o passageiro no R$/km" para usar só a distância da viagem.

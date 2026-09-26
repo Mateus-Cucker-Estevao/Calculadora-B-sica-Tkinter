@@ -95,7 +95,8 @@ class RegrasTest {
         val o = ExtratorOferta.extrair(oferta("40,00", "2 min (1 km)", "15 min (9 km)", "Rua São João, COCAL DO SUL - SC"))
         val r = Avaliador.avaliar(o, cfg)
         assertEquals(Cor.VERMELHO, r.cor)
-        assertEquals("Atenção: corrida para Cocal do Sul", r.fala)
+        assertEquals("BLOQUEADA: Cocal do Sul", r.titulo)
+        assertTrue(r.fala.contains("Pontos fracos: atenção, corrida para Cocal do Sul"))
     }
 
     @Test
@@ -112,7 +113,11 @@ class RegrasTest {
         val o = ExtratorOferta.extrair(oferta("25,00", "2 min (1 km)", "15 min (9 km)", "Centro, Criciúma"))
         val r = Avaliador.avaliar(o, cfg)
         assertEquals(Cor.VERDE, r.cor)
-        assertEquals("Corrida boa: 2 reais e 50 centavos por quilômetro", r.fala)
+        assertEquals(
+            "Corrida boa. Pontos fortes: destino liberado; passageiro perto, 1,0 quilômetros; " +
+                "valor acima do mínimo, 25 reais; bom valor por quilômetro, 2 reais e 50 centavos.",
+            r.fala,
+        )
     }
 
     @Test
@@ -126,7 +131,7 @@ class RegrasTest {
         val o = ExtratorOferta.extrair(oferta("12,50", "8 min (2,3 km)", "15 min (7,4 km)", "Centro, Criciúma"))
         val r = Avaliador.avaliar(o, cfg)
         assertEquals(Cor.VERMELHO, r.cor)
-        assertTrue(r.fala.startsWith("Abaixo do mínimo"))
+        assertTrue(r.fala.startsWith("Corrida ruim. Pontos fracos: barata demais"))
     }
 
     @Test
@@ -153,7 +158,12 @@ class RegrasTest {
         assertEquals("Avenida Victor Meireles, 1275, Santa Bárbara, Criciúma", o.destino)
         val r = Avaliador.avaliar(o, cfg)
         assertEquals(Cor.VERMELHO, r.cor)
-        assertEquals("Abaixo do mínimo: 1 real e 60 centavos por quilômetro", r.fala)
+        assertEquals(
+            "Corrida ruim. Pontos fracos: barata demais, 1 real e 60 centavos por quilômetro. " +
+                "Pontos fortes: destino liberado; passageiro perto, 2,7 quilômetros; " +
+                "valor acima do mínimo, 9 reais e 73 centavos.",
+            r.fala,
+        )
     }
 
     @Test
@@ -169,13 +179,42 @@ class RegrasTest {
         assertEquals(11.4, o.kmAtePassageiro!!, 0.001)
         assertEquals(0.0, o.kmViagem!!, 0.001)
         assertEquals("R. Oitocentos, 48, Quarta Linha, Criciúma", o.destino)
-        assertEquals(Cor.VERMELHO, Avaliador.avaliar(o, cfg).cor)
+        // Dois pontos fracos ao mesmo tempo: os dois precisam ser falados.
+        val r = Avaliador.avaliar(o, cfg)
+        assertEquals(Cor.VERMELHO, r.cor)
+        assertTrue(r.fala.contains("passageiro longe, 11,4 quilômetros"))
+        assertTrue(r.fala.contains("barata demais, 1 real e 9 centavos por quilômetro"))
+        assertTrue(r.fala.contains("Pontos fortes: destino liberado; valor acima do mínimo, 12 reais e 40 centavos"))
+        assertEquals(Cor.VERMELHO, r.pontos.first().cor)
     }
 
     @Test
     fun valorPorKmNaoEhValorDaCorrida() {
         val o = ExtratorOferta.extrair(listOf("R$1,09/km aprox.", "R$ 12,40", "5 min (2 km)", "10 min (5 km)"))
         assertEquals(12.4, o.valor!!, 0.001)
+    }
+
+    @Test
+    fun pontosNoLimiteSaoFaladosSeparados() {
+        // Busca 3,8 km (entre 3,6 e 4,0), valor R$ 8,50 (entre 8,00 e 8,80) e
+        // R$ 8,50 / 4,3 km = R$ 1,98/km (entre 1,80 e 1,98): tudo "no limite".
+        val o = ExtratorOferta.extrair(oferta("8,50", "9 min (3,8 km)", "3 min (0,5 km)", "Centro, Criciúma"))
+        val r = Avaliador.avaliar(o, cfg)
+        assertEquals(Cor.AMARELO, r.cor)
+        assertEquals(
+            "Corrida no limite. No limite: passageiro um pouco longe, 3,8 quilômetros; " +
+                "valor perto do mínimo, 8 reais e 50 centavos; no limite, 1 real e 98 centavos por quilômetro. " +
+                "Pontos fortes: destino liberado.",
+            r.fala,
+        )
+    }
+
+    @Test
+    fun semPontosFortesAFalaFicaCurta() {
+        val o = ExtratorOferta.extrair(oferta("12,50", "8 min (2,3 km)", "15 min (7,4 km)", "Centro, Criciúma"))
+        val r = Avaliador.avaliar(o, cfg.copy(falarPontosFortes = false))
+        assertEquals("Corrida ruim. Pontos fracos: barata demais, 1 real e 29 centavos por quilômetro.", r.fala)
+        assertEquals(4, r.pontos.size) // o banner continua mostrando tudo
     }
 
     @Test

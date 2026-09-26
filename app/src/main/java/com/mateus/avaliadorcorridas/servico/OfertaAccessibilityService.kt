@@ -182,8 +182,8 @@ class OfertaAccessibilityService : AccessibilityService() {
 
     private fun anunciar(r: Resultado, cfg: Configuracao) {
         if (cfg.modoDiagnostico) LogDiagnostico.registrarNota(this, "AVISO ${r.cor}: \"${r.fala}\"  (${r.detalhes})")
-        if (cfg.vozAtiva) falador.falar(r.fala)
-        banner.mostrar(r, cfg.segundosBanner)
+        banner.mostrar(r, cfg.segundosBanner, aguardarVoz = cfg.vozAtiva)
+        if (cfg.vozAtiva) falador.falar(r.fala) { banner.vozTerminou() }
     }
 
     /** Usado pela seção "Testar leitura" da tela principal. */

@@ -66,6 +66,7 @@ import com.mateus.avaliadorcorridas.dados.Configuracao
 import com.mateus.avaliadorcorridas.dados.LogDiagnostico
 import com.mateus.avaliadorcorridas.dados.Preferencias
 import com.mateus.avaliadorcorridas.regras.Avaliador
+import com.mateus.avaliadorcorridas.regras.Cor
 import com.mateus.avaliadorcorridas.regras.ExtratorOferta
 import com.mateus.avaliadorcorridas.servico.CapturaTelaService
 import com.mateus.avaliadorcorridas.servico.OfertaAccessibilityService
@@ -268,7 +269,7 @@ private fun CartaoCriterios(cfg: Configuracao, onSalvar: (Configuracao) -> Unit)
         CampoNumero("Valor mínimo da corrida (R$)", minimo) { minimo = it }
         CampoNumero("Distância máxima até o passageiro (km)", maxBusca) { maxBusca = it }
         CampoNumero("Margem do amarelo \"no limite\" (%)", margem) { margem = it }
-        CampoNumero("Tempo do banner na tela (segundos)", segundos) { segundos = it }
+        CampoNumero("Tempo mínimo do banner (segundos)", segundos) { segundos = it }
 
         Button(
             onClick = {
@@ -291,6 +292,14 @@ private fun CartaoCriterios(cfg: Configuracao, onSalvar: (Configuracao) -> Unit)
             onSalvar(cfg.copy(incluirBuscaNoCalculo = it))
         }
         LinhaSwitch("Aviso por voz", cfg.vozAtiva) { onSalvar(cfg.copy(vozAtiva = it)) }
+        LinhaSwitch("Falar também os pontos fortes", cfg.falarPontosFortes) {
+            onSalvar(cfg.copy(falarPontosFortes = it))
+        }
+        Text(
+            "Com a voz ligada, o banner fica na tela até a voz terminar de falar o diagnóstico inteiro. " +
+                "Desligue \"pontos fortes\" se quiser um aviso mais curto (só o que está ruim ou no limite).",
+            fontSize = 13.sp,
+        )
     }
 }
 
@@ -385,6 +394,10 @@ private fun CartaoTeste(servicoAtivo: Boolean) {
                     if (oferta.ehOferta) {
                         val r = Avaliador.avaliar(oferta, Preferencias.carregar(ctx))
                         appendLine("Resultado: ${r.titulo}")
+                        r.pontos.forEach { p ->
+                            val marca = when (p.cor) { Cor.VERMELHO -> "❌"; Cor.AMARELO -> "⚠️"; Cor.VERDE -> "✅" }
+                            appendLine("$marca ${p.texto}")
+                        }
                         appendLine("Detalhes: ${r.detalhes}")
                         append("Voz: \"${r.fala}\"")
                     } else {

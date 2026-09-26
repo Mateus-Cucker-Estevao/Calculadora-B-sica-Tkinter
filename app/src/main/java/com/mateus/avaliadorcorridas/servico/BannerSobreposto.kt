@@ -7,6 +7,7 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
@@ -18,7 +19,12 @@ import com.mateus.avaliadorcorridas.regras.Cor
 import com.mateus.avaliadorcorridas.regras.Resultado
 
 /**
- * Banner colorido no topo da tela, por alguns segundos.
+ * Banner colorido no topo da tela com o diagnóstico da corrida.
+ *
+ * Quanto tempo fica na tela:
+ *   - com voz: até a voz terminar de falar tudo (+1,5 s), respeitando o tempo mínimo;
+ *   - sem voz: o tempo mínimo, mais 2 s para cada ponto do diagnóstico.
+ *   - nunca mais que [MAXIMO_MS] (segurança, caso a voz falhe).
  *
  * Usa uma janela do tipo TYPE_ACCESSIBILITY_OVERLAY, que o serviço de acessibilidade pode
  * desenhar SEM precisar da permissão "Sobrepor a outros apps".
@@ -27,24 +33,27 @@ import com.mateus.avaliadorcorridas.regras.Resultado
  */
 class BannerSobreposto(private val servico: AccessibilityService) {
 
+    companion object {
+        private const val MAXIMO_MS = 30_000L
+        private const val DEPOIS_DA_VOZ_MS = 1_500L
+        private const val POR_PONTO_SEM_VOZ_MS = 2_000L
+    }
+
     private val wm = servico.getSystemService(WindowManager::class.java)
     private val handler = Handler(Looper.getMainLooper())
     private var atual: View? = null
+    private var mostradoEm = 0L
+    private var minimoMs = 0L
     private val esconder = Runnable { remover() }
 
-    fun mostrar(r: Resultado, segundos: Int) {
+    /** [aguardarVoz] = true: fica até alguém chamar [vozTerminou] (ou até o máximo). */
+    fun mostrar(r: Resultado, segundosMinimos: Int, aguardarVoz: Boolean) {
         remover()
 
-        val (fundo, corTexto) = when (r.cor) {
-            Cor.VERDE -> Color.rgb(46, 125, 50) to Color.WHITE
-            Cor.AMARELO -> Color.rgb(255, 193, 7) to Color.BLACK
-            Cor.VERMELHO -> Color.rgb(198, 40, 40) to Color.WHITE
-        }
-
+        val (fundo, corTexto) = coresDe(r.cor)
         val caixa = LinearLayout(servico).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(16), dp(12), dp(16), dp(12))
+            setPadding(dp(16), dp(10), dp(16), dp(10))
             background = GradientDrawable().apply {
                 setColor(fundo)
                 cornerRadius = dp(16).toFloat()
@@ -52,15 +61,23 @@ class BannerSobreposto(private val servico: AccessibilityService) {
             addView(TextView(servico).apply {
                 text = r.titulo
                 setTextColor(corTexto)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 24f)
                 typeface = Typeface.DEFAULT_BOLD
                 gravity = Gravity.CENTER
             })
+            r.pontos.forEach { p ->
+                addView(TextView(servico).apply {
+                    text = "${marcador(p.cor)}  ${p.texto}"
+                    setTextColor(corTexto)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                })
+            }
             addView(TextView(servico).apply {
                 text = r.detalhes
                 setTextColor(corTexto)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 gravity = Gravity.CENTER
+                setPadding(0, dp(4), 0, 0)
             })
         }
 
@@ -74,17 +91,29 @@ class BannerSobreposto(private val servico: AccessibilityService) {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP
-            y = dp(48)
+            y = dp(40)
             horizontalMargin = 0.03f
         }
 
         try {
             wm.addView(caixa, params)
             atual = caixa
-            handler.postDelayed(esconder, segundos.coerceIn(1, 30) * 1000L)
+            mostradoEm = SystemClock.uptimeMillis()
+            minimoMs = segundosMinimos.coerceIn(1, 30) * 1000L
+            val duracao = if (aguardarVoz) MAXIMO_MS else minimoMs + r.pontos.size * POR_PONTO_SEM_VOZ_MS
+            handler.postDelayed(esconder, duracao.coerceAtMost(MAXIMO_MS))
         } catch (e: Exception) {
             Log.e("BannerSobreposto", "Não foi possível mostrar o banner", e)
         }
+    }
+
+    /** A voz acabou: esconde daqui a pouco, mas nunca antes do tempo mínimo. */
+    fun vozTerminou() {
+        if (atual == null) return
+        val passou = SystemClock.uptimeMillis() - mostradoEm
+        val resta = maxOf(minimoMs - passou, 0L) + DEPOIS_DA_VOZ_MS
+        handler.removeCallbacks(esconder)
+        handler.postDelayed(esconder, resta)
     }
 
     fun remover() {
@@ -93,6 +122,18 @@ class BannerSobreposto(private val servico: AccessibilityService) {
             try { wm.removeView(it) } catch (_: Exception) {}
         }
         atual = null
+    }
+
+    private fun coresDe(cor: Cor): Pair<Int, Int> = when (cor) {
+        Cor.VERDE -> Color.rgb(46, 125, 50) to Color.WHITE
+        Cor.AMARELO -> Color.rgb(255, 193, 7) to Color.BLACK
+        Cor.VERMELHO -> Color.rgb(198, 40, 40) to Color.WHITE
+    }
+
+    private fun marcador(cor: Cor): String = when (cor) {
+        Cor.VERDE -> "✅"
+        Cor.AMARELO -> "⚠️"
+        Cor.VERMELHO -> "❌"
     }
 
     private fun dp(v: Int): Int = (v * servico.resources.displayMetrics.density).toInt()

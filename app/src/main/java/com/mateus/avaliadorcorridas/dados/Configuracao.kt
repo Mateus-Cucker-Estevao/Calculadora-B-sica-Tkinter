@@ -12,6 +12,9 @@ data class Configuracao(
     val margemAmareloPct: Int = 10,
     /** Se true, o R$/km é calculado com (busca + viagem). Se false, só com a viagem. */
     val incluirBuscaNoCalculo: Boolean = true,
+    /** Tempo MÍNIMO do banner. Com a voz ligada, ele fica até a voz terminar de falar. */
     val segundosBanner: Int = 6,
     val vozAtiva: Boolean = true,
+    /** Se false, a voz fala só os pontos fracos e os do limite (fica mais curta). */
+    val falarPontosFortes: Boolean = true,
 )

@@ -28,6 +28,7 @@ object Preferencias {
             incluirBuscaNoCalculo = p.getBoolean("incluirBusca", padrao.incluirBuscaNoCalculo),
             segundosBanner = p.getInt("segundosBanner", padrao.segundosBanner),
             vozAtiva = p.getBoolean("voz", padrao.vozAtiva),
+            falarPontosFortes = p.getBoolean("falarFortes", padrao.falarPontosFortes),
         )
     }
 
@@ -43,6 +44,7 @@ object Preferencias {
             .putBoolean("incluirBusca", c.incluirBuscaNoCalculo)
             .putInt("segundosBanner", c.segundosBanner)
             .putBoolean("voz", c.vozAtiva)
+            .putBoolean("falarFortes", c.falarPontosFortes)
             .apply()
     }
 
