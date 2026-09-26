@@ -51,13 +51,15 @@ object RegrasExtracao {
 
     /**
      * Valor em reais, ex.: "R$ 12,50", "R$12.50", "R$ 8".
-     * Valores com "+" na frente (ex.: "+R$ 3,00" de dinâmica) são ignorados.
+     * Ignorados:
+     *   - valores com "+" na frente (ex.: "+R$ 3,00" de dinâmica);
+     *   - valores por km (ex.: "R$1,09/km aprox.", que o Uber mostra logo abaixo do valor).
      *
      * Se aparecerem vários valores (ex.: seus ganhos do dia no topo da tela),
      * o código escolhe o ÚLTIMO valor que aparece ANTES da distância até o
      * passageiro — que normalmente é o valor da oferta.
      */
-    val VALOR = Regex("""(?<!\+)(?<!\+ )R\$\s*(?<valor>\d{1,4}(?:[.,]\d{1,2})?)""", I)
+    val VALOR = Regex("""(?<!\+)(?<!\+ )R\$\s*(?<valor>\d{1,4}(?:[.,]\d{1,2})?)(?![\d.,])(?!\s*/\s*km)""", I)
 
     // ---------------------------------------------------------------
     // 2) DISTÂNCIA ATÉ O PASSAGEIRO (busca)
@@ -85,6 +87,15 @@ object RegrasExtracao {
     /**
      * Plano B: se as regras acima não acharem nada, procura qualquer
      * "X min (Y km)" na tela. O 1º encontrado é a busca, o 2º é a viagem.
+     *
+     * FORMATO REAL DO UBER (setembro/2026) — é este plano B que funciona hoje:
+     *   R$ 9,73
+     *   R$1,60/km aprox.
+     *   5 min (2.7 km)                ← busca (até o passageiro)
+     *   Rua Desafio Jovem, ...        ← endereço do passageiro
+     *   7 minutos (3.4 km)            ← viagem
+     *   Avenida Victor Meireles, ...  ← destino
+     *   Aceitar / Selecionar
      */
     val TEMPO_E_DISTANCIA_GENERICO = Regex(TEMPO_DIST, I)
 

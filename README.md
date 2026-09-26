@@ -226,21 +226,26 @@ lê, para você ajustar as regras.
 Cada "foto" da tela aparece assim:
 
 ```
-===== 23/09 18:42:10 =====
+===== 26/09 10:36:12 =====
 [00] UberX
-[01] R$ 18,50
-[02] 4,95 ★
-[03] 6 min (2,1 km) de distância
-[04] Rua Henrique Lage, Centro, Criciúma
-[05] Viagem de 18 min (8,4 km)
-[06] Rua São João, Cocal do Sul - SC
-[07] Aceitar
---> LEITURA: OFERTA  valor=18.5 | busca=2.1 km (6 min) | viagem=8.4 km (18 min) | destino=Rua São João, Cocal do Sul - SC
+[01] Exclusivo
+[02] R$ 9,73
+[03] R$1,60/km aprox.
+[04] 4,94 (32)
+[05] 5 min (2.7 km)
+[06] Rua Desafio Jovem, Recanto Verde, Criciúma
+[07] 7 minutos (3.4 km)
+[08] Avenida Victor Meireles, 1275, Santa Bárbara, Criciúma
+[09] Aceitar
+--> LEITURA: OFERTA  valor=9.73 | busca=2.7 km (5 min) | viagem=3.4 km (7 min) | destino=Avenida Victor Meireles, 1275, Santa Bárbara, Criciúma
+
+##### 26/09 10:36:13  AVISO VERMELHO: "Abaixo do mínimo: 1 real e 60 centavos por quilômetro"  (R$ 9,73 · 6,1 km · R$ 1,60/km · busca 2,7 km)
 ```
 
 - As linhas `[00]`, `[01]`… são os textos da tela, na ordem em que o app os encontrou.
 - A linha **`--> LEITURA`** mostra o que o app entendeu. Se algum campo estiver com `?` (ou errado)
   numa oferta de verdade, a regra correspondente precisa de ajuste.
+- As linhas **`#####`** mostram quando o serviço foi conectado e cada **AVISO** que foi falado.
 
 ### 6.3 Ajustar as regras
 

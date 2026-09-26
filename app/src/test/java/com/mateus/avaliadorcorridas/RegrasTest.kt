@@ -135,6 +135,49 @@ class RegrasTest {
         assertEquals(Cor.VERMELHO, Avaliador.avaliar(o, cfg).cor)
     }
 
+    // ---- Ofertas reais (prints de 26/09/2026) ----
+
+    @Test
+    fun ofertaRealExclusivo() {
+        val o = ExtratorOferta.extrair(
+            listOf(
+                "UberX", "Exclusivo", "R$ 9,73", "R$1,60/km aprox.", "4,94 (32)", "Verificado",
+                "5 min (2.7 km)", "Rua Desafio Jovem, Recanto Verde, Criciúma",
+                "7 minutos (3.4 km)", "Avenida Victor Meireles, 1275, Santa Bárbara, Criciúma", "Aceitar",
+            ),
+        )
+        assertEquals(9.73, o.valor!!, 0.001)
+        assertEquals(2.7, o.kmAtePassageiro!!, 0.001)
+        assertEquals(3.4, o.kmViagem!!, 0.001)
+        assertEquals(7, o.minutosViagem)
+        assertEquals("Avenida Victor Meireles, 1275, Santa Bárbara, Criciúma", o.destino)
+        val r = Avaliador.avaliar(o, cfg)
+        assertEquals(Cor.VERMELHO, r.cor)
+        assertEquals("Abaixo do mínimo: 1 real e 60 centavos por quilômetro", r.fala)
+    }
+
+    @Test
+    fun ofertaRealPassageiroLonge() {
+        val o = ExtratorOferta.extrair(
+            listOf(
+                "UberX", "R$ 12,40", "R$1,09/km aprox.", "4,74 (41)",
+                "17 min (11.4 km)", "R. Luiz Santino Roque, Quarta Linha, Criciúma",
+                "<1 min (0 km)", "R. Oitocentos, 48, Quarta Linha, Criciúma", "Selecionar",
+            ),
+        )
+        assertEquals(12.4, o.valor!!, 0.001)
+        assertEquals(11.4, o.kmAtePassageiro!!, 0.001)
+        assertEquals(0.0, o.kmViagem!!, 0.001)
+        assertEquals("R. Oitocentos, 48, Quarta Linha, Criciúma", o.destino)
+        assertEquals(Cor.VERMELHO, Avaliador.avaliar(o, cfg).cor)
+    }
+
+    @Test
+    fun valorPorKmNaoEhValorDaCorrida() {
+        val o = ExtratorOferta.extrair(listOf("R$1,09/km aprox.", "R$ 12,40", "5 min (2 km)", "10 min (5 km)"))
+        assertEquals(12.4, o.valor!!, 0.001)
+    }
+
     @Test
     fun falaDinheiro() {
         assertEquals("2 reais e 10 centavos", Avaliador.falaReais(2.10))

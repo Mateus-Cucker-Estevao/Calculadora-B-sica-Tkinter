@@ -55,10 +55,19 @@ class OfertaAccessibilityService : AccessibilityService() {
         falador = Falador(this)
         banner = BannerSobreposto(this)
         instancia = this
+        val cfg = Preferencias.carregar(this)
+        if (cfg.modoDiagnostico) {
+            LogDiagnostico.registrarNota(this, "Serviço conectado (monitoramento ${if (cfg.monitorando) "LIGADO" else "DESLIGADO"})")
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.packageName?.toString() != RegrasExtracao.PACOTE_UBER) return
+        if (event == null) return
+        val pacote = event.packageName?.toString()
+        // Eventos de "janelas mudaram" às vezes chegam sem nome de pacote; nesse caso
+        // lemos mesmo assim (coletarTextos só pega janelas do Uber).
+        val semPacote = pacote == null && event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED
+        if (pacote != RegrasExtracao.PACOTE_UBER && !semPacote) return
         val cfg = Preferencias.carregar(this)
         if (!cfg.monitorando && !cfg.modoDiagnostico) return
 
@@ -112,6 +121,7 @@ class OfertaAccessibilityService : AccessibilityService() {
     }
 
     private fun anunciar(r: Resultado, cfg: Configuracao) {
+        if (cfg.modoDiagnostico) LogDiagnostico.registrarNota(this, "AVISO ${r.cor}: \"${r.fala}\"  (${r.detalhes})")
         if (cfg.vozAtiva) falador.falar(r.fala)
         banner.mostrar(r, cfg.segundosBanner)
     }

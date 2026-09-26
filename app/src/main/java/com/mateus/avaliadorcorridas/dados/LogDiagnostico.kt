@@ -45,6 +45,13 @@ object LogDiagnostico {
         }
     }
 
+    /** Grava uma linha avulsa, ex.: "Serviço conectado" ou o aviso que foi falado. */
+    fun registrarNota(ctx: Context, nota: String) {
+        val app = ctx.applicationContext
+        val linha = "##### " + formatoHora.format(Date()) + "  " + nota + "\n\n"
+        gravador.execute { arquivo(app).appendText(linha) }
+    }
+
     /** Lê o final do log (os registros mais recentes). */
     fun ler(ctx: Context, maxCaracteres: Int = 60_000): String {
         val f = arquivo(ctx)
