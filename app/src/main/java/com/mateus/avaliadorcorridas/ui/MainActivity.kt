@@ -1,16 +1,20 @@
 package com.mateus.avaliadorcorridas.ui
 
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -63,6 +67,7 @@ import com.mateus.avaliadorcorridas.dados.LogDiagnostico
 import com.mateus.avaliadorcorridas.dados.Preferencias
 import com.mateus.avaliadorcorridas.regras.Avaliador
 import com.mateus.avaliadorcorridas.regras.ExtratorOferta
+import com.mateus.avaliadorcorridas.servico.CapturaTelaService
 import com.mateus.avaliadorcorridas.servico.OfertaAccessibilityService
 import java.util.Locale
 
@@ -128,6 +133,7 @@ private fun TelaPrincipal() {
         Text("Só lê e avisa. Nunca toca em nada. Nenhum dado sai do celular.", fontSize = 13.sp)
 
         CartaoStatus(ativo, cfg.monitorando) { salvar(cfg.copy(monitorando = !cfg.monitorando)) }
+        CartaoLeituraImagem()
         CartaoCriterios(cfg, salvar)
         CartaoDestinos(cfg.destinosBloqueados) { salvar(cfg.copy(destinosBloqueados = it)) }
         CartaoTeste(ativo)
@@ -197,6 +203,51 @@ private fun CartaoStatus(servicoAtivo: Boolean, monitorando: Boolean, onAlternar
                 "para ligar e desligar sem abrir o app.",
             fontSize = 13.sp,
         )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1b. Plano B: leitura pela imagem da tela
+// ---------------------------------------------------------------------------
+@Composable
+private fun CartaoLeituraImagem() {
+    val ctx = LocalContext.current
+    var ligada by remember { mutableStateOf(CapturaTelaService.ativo) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { ligada = CapturaTelaService.ativo }
+
+    // Abre a janela do Android "Iniciar gravação/transmissão?" e, se você aceitar,
+    // liga o serviço de captura com a autorização recebida.
+    val pedirCaptura = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { resposta ->
+        val dados = resposta.data
+        if (resposta.resultCode == Activity.RESULT_OK && dados != null) {
+            ctx.startForegroundService(
+                Intent(ctx, CapturaTelaService::class.java)
+                    .putExtra(CapturaTelaService.EXTRA_CODIGO, resposta.resultCode)
+                    .putExtra(CapturaTelaService.EXTRA_DADOS, dados),
+            )
+            ligada = true
+        } else {
+            Toast.makeText(ctx, "Leitura por imagem não autorizada", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    Cartao("Leitura por imagem (plano B)") {
+        Text(
+            "Use se o app não reconhecer as ofertas: ele passa a ler o texto da IMAGEM da tela, " +
+                "só enquanto o Uber está aberto. Tudo acontece no celular; nenhuma imagem é salva ou enviada.\n" +
+                "Ao ligar, o Android pergunta se pode gravar/compartilhar a tela: escolha \"Tela inteira\" e toque em Iniciar. " +
+                "Precisa ligar de novo cada vez que o celular reiniciar.",
+            fontSize = 13.sp,
+        )
+        LinhaSwitch("Ler as ofertas pela imagem da tela", ligada) { ligar ->
+            if (ligar) {
+                val gerenciador = ctx.getSystemService(MediaProjectionManager::class.java)
+                pedirCaptura.launch(gerenciador.createScreenCaptureIntent())
+            } else {
+                ctx.stopService(Intent(ctx, CapturaTelaService::class.java))
+                ligada = false
+            }
+        }
     }
 }
 

@@ -11,6 +11,10 @@
         android:name="android.permission.INTERNET"
         tools:node="remove" />
 
+    <!-- Só para o PLANO B (leitura por imagem): serviço em primeiro plano com captura de tela. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -61,6 +65,12 @@
                 android:name="android.service.quicksettings.TOGGLEABLE_TILE"
                 android:value="true" />
         </service>
+
+        <!-- PLANO B: lê as ofertas pela imagem da tela (só quando você liga e autoriza) -->
+        <service
+            android:name=".servico.CapturaTelaService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
 
         <!-- Permite compartilhar o arquivo de log (somente quando VOCÊ tocar em "Compartilhar") -->
         <provider

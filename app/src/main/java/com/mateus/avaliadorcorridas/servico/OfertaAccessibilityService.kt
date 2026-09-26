@@ -6,16 +6,22 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import com.mateus.avaliadorcorridas.dados.Configuracao
 import com.mateus.avaliadorcorridas.dados.LogDiagnostico
 import com.mateus.avaliadorcorridas.dados.Preferencias
 import com.mateus.avaliadorcorridas.regras.Avaliador
 import com.mateus.avaliadorcorridas.regras.ExtratorOferta
+import com.mateus.avaliadorcorridas.regras.Oferta
 import com.mateus.avaliadorcorridas.regras.RegrasExtracao
 import com.mateus.avaliadorcorridas.regras.Resultado
 
 /**
  * Serviço que roda em segundo plano e LÊ a tela do Uber Driver.
+ *
+ * Duas formas de leitura chegam aqui e passam pela MESMA avaliação:
+ *   - "tela":   texto que o Android entrega pela acessibilidade (padrão);
+ *   - "imagem": texto reconhecido na imagem da tela (CapturaTelaService, plano B).
  *
  * IMPORTANTE: este serviço APENAS LÊ. Ele nunca chama performAction(),
  * dispatchGesture() nem nada que toque na tela. Aceitar ou recusar é sempre com você.
@@ -28,12 +34,21 @@ class OfertaAccessibilityService : AccessibilityService() {
         var instancia: OfertaAccessibilityService? = null
             private set
 
+        /** Quando chegou o último evento do Uber (o Uber está na tela se foi há pouco tempo). */
+        @Volatile
+        var ultimoEventoUberEm = 0L
+            private set
+
         private const val ESPERA_ANTES_DE_LER_MS = 350L
         private const val ESPERA_NOVA_TENTATIVA_MS = 500L
         private const val NAO_REPETIR_MESMA_OFERTA_MS = 30_000L
+        private const val INTERVALO_LOG_IMAGEM_MS = 10_000L
         private const val MAX_NOS = 2000
         private const val MAX_PROFUNDIDADE = 50
     }
+
+    /** Resultado de uma leitura da árvore de acessibilidade. */
+    private class Coleta(val linhas: List<String>, val resumo: String)
 
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var falador: Falador
@@ -42,6 +57,8 @@ class OfertaAccessibilityService : AccessibilityService() {
     private var leituraAgendada = false
     private var tentativasSemViagem = 0
     private var ultimoTextoNoLog = ""
+    private var ultimaImagemNoLog = ""
+    private var ultimaImagemNoLogEm = 0L
     private var ultimaChaveOferta = ""
     private var ultimaOfertaEm = 0L
 
@@ -68,6 +85,8 @@ class OfertaAccessibilityService : AccessibilityService() {
         // lemos mesmo assim (coletarTextos só pega janelas do Uber).
         val semPacote = pacote == null && event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED
         if (pacote != RegrasExtracao.PACOTE_UBER && !semPacote) return
+        if (pacote != null) ultimoEventoUberEm = SystemClock.elapsedRealtime()
+
         val cfg = Preferencias.carregar(this)
         if (!cfg.monitorando && !cfg.modoDiagnostico) return
 
@@ -82,22 +101,60 @@ class OfertaAccessibilityService : AccessibilityService() {
         handler.postDelayed(lerAgora, atraso)
     }
 
+    // ---------------------------------------------------------------------
+    // Leitura 1: texto da acessibilidade
+    // ---------------------------------------------------------------------
+
     private fun lerTela() {
         val cfg = Preferencias.carregar(this)
-        val linhas = coletarTextos()
-        if (linhas.isEmpty()) return
-
-        val oferta = ExtratorOferta.extrair(linhas)
+        val coleta = coletarTextos()
+        val oferta = ExtratorOferta.extrair(coleta.linhas)
 
         if (cfg.modoDiagnostico) {
-            val junto = linhas.joinToString("\n")
-            if (junto != ultimoTextoNoLog) {
-                ultimoTextoNoLog = junto
-                val leitura = (if (oferta.ehOferta) "OFERTA  " else "(não é oferta)  ") + oferta.resumo()
-                LogDiagnostico.registrar(this, linhas, leitura)
+            // O resumo das janelas entra na comparação: se aparecer uma janela nova
+            // (ex.: o cartão da oferta) sem texto legível, isso também fica registrado.
+            val chave = coleta.resumo + "\n" + coleta.linhas.joinToString("\n")
+            if (chave != ultimoTextoNoLog) {
+                ultimoTextoNoLog = chave
+                LogDiagnostico.registrar(this, coleta.linhas, descrever(oferta), "TELA  " + coleta.resumo)
             }
         }
 
+        if (coleta.linhas.isEmpty()) return
+        avaliarEAvisar(oferta, cfg, podeReagendar = true)
+    }
+
+    // ---------------------------------------------------------------------
+    // Leitura 2: texto reconhecido na imagem (chamado pelo CapturaTelaService)
+    // ---------------------------------------------------------------------
+
+    fun processarImagem(linhas: List<String>) {
+        handler.post {
+            val cfg = Preferencias.carregar(this)
+            if (!cfg.monitorando && !cfg.modoDiagnostico) return@post
+            val oferta = ExtratorOferta.extrair(linhas)
+
+            if (cfg.modoDiagnostico) {
+                val junto = linhas.joinToString("\n")
+                val agora = SystemClock.elapsedRealtime()
+                // A imagem é lida a cada segundo; para o log não crescer demais,
+                // registramos toda oferta, mas outras telas no máximo a cada 10 s.
+                if (junto != ultimaImagemNoLog && (oferta.ehOferta || agora - ultimaImagemNoLogEm > INTERVALO_LOG_IMAGEM_MS)) {
+                    ultimaImagemNoLog = junto
+                    ultimaImagemNoLogEm = agora
+                    LogDiagnostico.registrar(this, linhas, descrever(oferta), "IMAGEM")
+                }
+            }
+
+            avaliarEAvisar(oferta, cfg, podeReagendar = false)
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Avaliação comum às duas leituras
+    // ---------------------------------------------------------------------
+
+    private fun avaliarEAvisar(oferta: Oferta, cfg: Configuracao, podeReagendar: Boolean) {
         if (!cfg.monitorando || !oferta.ehOferta) {
             tentativasSemViagem = 0
             return
@@ -107,7 +164,7 @@ class OfertaAccessibilityService : AccessibilityService() {
         // esperamos um pouco e lemos de novo antes de avisar.
         if (oferta.kmViagem == null && tentativasSemViagem < RegrasExtracao.TENTATIVAS_ESPERANDO_VIAGEM) {
             tentativasSemViagem++
-            agendarLeitura(ESPERA_NOVA_TENTATIVA_MS)
+            if (podeReagendar) agendarLeitura(ESPERA_NOVA_TENTATIVA_MS)
             return
         }
         tentativasSemViagem = 0
@@ -119,6 +176,9 @@ class OfertaAccessibilityService : AccessibilityService() {
 
         anunciar(Avaliador.avaliar(oferta, cfg), cfg)
     }
+
+    private fun descrever(oferta: Oferta): String =
+        (if (oferta.ehOferta) "OFERTA  " else "(não é oferta)  ") + oferta.resumo()
 
     private fun anunciar(r: Resultado, cfg: Configuracao) {
         if (cfg.modoDiagnostico) LogDiagnostico.registrarNota(this, "AVISO ${r.cor}: \"${r.fala}\"  (${r.detalhes})")
@@ -139,12 +199,20 @@ class OfertaAccessibilityService : AccessibilityService() {
 
     fun falar(texto: String) = falador.falar(texto)
 
-    /** Junta todos os textos visíveis das janelas do Uber, de cima para baixo. */
-    private fun coletarTextos(): List<String> {
+    /**
+     * Junta todos os textos das janelas do Uber, de cima para baixo.
+     * O resumo lista TODAS as janelas vistas (tipo:pacote) e quantos elementos
+     * o Uber expôs — útil no log para saber se o cartão da oferta está escondido.
+     */
+    private fun coletarTextos(): Coleta {
         val raizes = mutableListOf<AccessibilityNodeInfo>()
+        val janelas = mutableListOf<String>()
         try {
             windows.forEach { janela ->
-                janela.root?.let { if (it.packageName?.toString() == RegrasExtracao.PACOTE_UBER) raizes += it }
+                val raiz = janela.root
+                val pacote = raiz?.packageName?.toString()
+                janelas += "${tipoJanela(janela.type)}:${pacote?.substringAfterLast('.') ?: "?"}"
+                if (raiz != null && pacote == RegrasExtracao.PACOTE_UBER) raizes += raiz
             }
         } catch (_: Exception) {
             // Alguns celulares não permitem listar janelas; usamos só a janela ativa.
@@ -156,7 +224,17 @@ class OfertaAccessibilityService : AccessibilityService() {
         val saida = mutableListOf<String>()
         val contador = intArrayOf(0)
         raizes.forEach { percorrer(it, saida, 0, contador) }
-        return saida
+        val resumo = "janelas=[${janelas.joinToString(" ")}] janelasUber=${raizes.size} elementosUber=${contador[0]}"
+        return Coleta(saida, resumo)
+    }
+
+    private fun tipoJanela(tipo: Int): String = when (tipo) {
+        AccessibilityWindowInfo.TYPE_APPLICATION -> "app"
+        AccessibilityWindowInfo.TYPE_SYSTEM -> "sistema"
+        AccessibilityWindowInfo.TYPE_INPUT_METHOD -> "teclado"
+        AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY -> "sobreposicao"
+        AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER -> "divisor"
+        else -> "tipo$tipo"
     }
 
     private fun percorrer(no: AccessibilityNodeInfo, saida: MutableList<String>, profundidade: Int, contador: IntArray) {

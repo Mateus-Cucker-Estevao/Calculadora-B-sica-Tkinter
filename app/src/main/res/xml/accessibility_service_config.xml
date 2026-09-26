@@ -5,6 +5,9 @@
     - packageNames: o serviço SÓ recebe eventos do app Uber Driver.
     - canRetrieveWindowContent: permite ler o texto da tela.
     - NÃO há "canPerformGestures": o serviço não tem capacidade de tocar na tela.
+    - isAccessibilityTool: o serviço lê a tela EM VOZ ALTA para o motorista não precisar
+      olhar o celular. No Android 14+, apps podem marcar partes da tela como "sensíveis",
+      e só ferramentas de leitura declaradas assim conseguem ler essas partes.
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeWindowsChanged"
@@ -12,5 +15,6 @@
     android:accessibilityFlags="flagIncludeNotImportantViews|flagReportViewIds|flagRetrieveInteractiveWindows"
     android:canRetrieveWindowContent="true"
     android:description="@string/servico_descricao"
+    android:isAccessibilityTool="true"
     android:notificationTimeout="200"
     android:packageNames="com.ubercab.driver" />

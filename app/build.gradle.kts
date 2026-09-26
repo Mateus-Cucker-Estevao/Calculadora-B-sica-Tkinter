@@ -13,8 +13,13 @@ android {
         applicationId = "com.mateus.avaliadorcorridas"
         minSdk = 29 // Android 10
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
+
+        // Só processadores de celular (deixa o APK menor por causa do ML Kit).
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     signingConfigs {
@@ -62,6 +67,9 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
+
+    // Reconhecimento de texto em imagens, 100% offline (modelo embutido no APK). Usado no plano B.
+    implementation("com.google.mlkit:text-recognition:16.0.1")
 
     testImplementation("junit:junit:4.13.2")
 }

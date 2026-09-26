@@ -28,10 +28,11 @@ object LogDiagnostico {
     fun arquivo(ctx: Context): File = File(ctx.filesDir, NOME_ARQUIVO)
 
     /** Grava uma "foto" do texto da tela (em segundo plano, sem travar o celular). */
-    fun registrar(ctx: Context, linhas: List<String>, leitura: String) {
+    fun registrar(ctx: Context, linhas: List<String>, leitura: String, origem: String = "") {
         val app = ctx.applicationContext
         val bloco = buildString {
             append("===== ").append(formatoHora.format(Date())).append(" =====\n")
+            if (origem.isNotEmpty()) append("(").append(origem).append(")\n")
             linhas.forEachIndexed { i, l -> append(String.format(Locale.ROOT, "[%02d] ", i)).append(l).append('\n') }
             append("--> LEITURA: ").append(leitura).append("\n\n")
         }
