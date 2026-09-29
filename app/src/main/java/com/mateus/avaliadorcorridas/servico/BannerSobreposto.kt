@@ -1,6 +1,6 @@
 package com.mateus.avaliadorcorridas.servico
 
-import android.accessibilityservice.AccessibilityService
+import android.content.Context
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
@@ -8,6 +8,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
@@ -16,6 +17,7 @@ import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.mateus.avaliadorcorridas.regras.Cor
+import com.mateus.avaliadorcorridas.regras.Indicador
 import com.mateus.avaliadorcorridas.regras.Painel
 import com.mateus.avaliadorcorridas.regras.Resultado
 
@@ -25,6 +27,7 @@ import com.mateus.avaliadorcorridas.regras.Resultado
  *   ┌──────────── borda verde / amarela / vermelha ────────────┐
  *   │   ✅ Valor      │    ❌ R$/km     │     ✅ Nota           │
  *   │   R$ 19,59      │      1,72       │      4,87             │
+ *   │ ✅ lucro 13,07   │                 │                       │
  *   │ ─────────────────────────────────────────────────────── │
  *   │ ✅ Até passageiro │ Distância total │ Tempo estimado       │
  *   │     2,9 km        │    11,4 km      │    24 min            │
@@ -37,10 +40,10 @@ import com.mateus.avaliadorcorridas.regras.Resultado
  *     (aceita, recusada ou expirada);
  *   - botão "Testar": um tempo fixo.
  *
- * Usa uma janela TYPE_ACCESSIBILITY_OVERLAY (não precisa da permissão "Sobrepor a outros
- * apps") e é "não tocável": seus toques passam direto para o Uber.
+ * Precisa da permissão "Sobrepor a outros apps" (TYPE_APPLICATION_OVERLAY). O aviso é
+ * "não tocável": seus toques passam direto para o Uber, então ele nunca aperta nada.
  */
-class BannerSobreposto(private val servico: AccessibilityService) {
+class BannerSobreposto(private val servico: Context) {
 
     sealed class Duracao {
         /** Fica enquanto [ultimaVezVista] (elapsedRealtime da última leitura com oferta) for recente. */
@@ -73,6 +76,10 @@ class BannerSobreposto(private val servico: AccessibilityService) {
     fun mostrar(r: Resultado, duracao: Duracao) {
         remover()
         val painel = r.painel ?: return
+        if (!Settings.canDrawOverlays(servico)) {
+            Log.w("BannerSobreposto", "Sem permissão para sobrepor a outros apps")
+            return
+        }
 
         // Borda colorida (resultado geral) com o cartão branco dentro.
         val borda = LinearLayout(servico).apply {
@@ -92,7 +99,7 @@ class BannerSobreposto(private val servico: AccessibilityService) {
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
@@ -147,7 +154,7 @@ class BannerSobreposto(private val servico: AccessibilityService) {
 
     /** Valor · R$/km · Nota (os três com ✅/⚠️/❌ conforme seus critérios). */
     private fun celulasDeCima(p: Painel) = listOf(
-        celula("Valor", p.valor.cor, p.valor.texto),
+        celula("Valor", p.valor.cor, p.valor.texto, subtitulo = p.lucro),
         celula("R$/km", p.porKm.cor, p.porKm.texto),
         celula("Nota", p.nota.cor, p.nota.texto),
     )
@@ -169,7 +176,7 @@ class BannerSobreposto(private val servico: AccessibilityService) {
     }
 
     /** Rótulo pequeno (com o ✅/⚠️/❌ na frente) e o valor grande embaixo. */
-    private fun celula(rotulo: String, cor: Cor?, valor: String) = LinearLayout(servico).apply {
+    private fun celula(rotulo: String, cor: Cor?, valor: String, subtitulo: Indicador? = null) = LinearLayout(servico).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
         val marca = marcador(cor)
@@ -181,6 +188,14 @@ class BannerSobreposto(private val servico: AccessibilityService) {
             gravity = Gravity.CENTER
             maxLines = 1
         })
+        // Lucro estimado (valor − combustível), embaixo do valor.
+        subtitulo?.takeIf { it.texto != "–" }?.let { lucro ->
+            val m = marcador(lucro.cor)
+            addView(texto("${if (m.isEmpty()) "" else "$m "}lucro ${lucro.texto}", 12f, TEXTO_CLARO).apply {
+                gravity = Gravity.CENTER
+                maxLines = 1
+            })
+        }
     }
 
     private fun texto(conteudo: String, tamanhoSp: Float, cor: Int, negrito: Boolean = false) =

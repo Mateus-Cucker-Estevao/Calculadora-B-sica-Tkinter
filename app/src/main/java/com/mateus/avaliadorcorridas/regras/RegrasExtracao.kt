@@ -138,6 +138,28 @@ object RegrasExtracao {
     const val BLOQUEIO_PROCURA_APOS_VIAGEM = true
 
     // ---------------------------------------------------------------
+    // 4b) CORRIDA ACEITA
+    // ---------------------------------------------------------------
+
+    /**
+     * Como o app sabe que você ACEITOU uma oferta: depois que a oferta some da tela,
+     * se aparecer alguma destas palavras (tela de corrida em andamento) em até
+     * [JANELA_CORRIDA_ACEITA_MS], a oferta vira uma corrida do turno.
+     *
+     * ⚠️ Ainda não calibrado com o texto real do Uber. Se o app não registrar suas
+     * corridas, ligue o modo diagnóstico, aceite uma corrida e veja no log quais
+     * palavras aparecem na tela depois de aceitar. Depois ajuste esta lista.
+     * (Compara sem acentos e sem diferenciar maiúsculas.)
+     */
+    val PALAVRAS_CORRIDA_ACEITA = listOf(
+        "iniciar viagem", "iniciar a viagem", "concluir viagem", "concluir a viagem",
+        "encerrar viagem", "finalizar viagem", "a caminho", "cheguei", "chegou ao local",
+        "pegar passageiro", "buscar passageiro", "deslize para",
+    )
+
+    const val JANELA_CORRIDA_ACEITA_MS = 90_000L
+
+    // ---------------------------------------------------------------
     // 5) O QUE CONTA COMO "OFERTA"
     // ---------------------------------------------------------------
 

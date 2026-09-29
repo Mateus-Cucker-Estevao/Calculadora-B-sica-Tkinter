@@ -72,6 +72,12 @@ object ExtratorOferta {
         )
     }
 
+    /** A tela parece ser de uma corrida em andamento? (veja PALAVRAS_CORRIDA_ACEITA) */
+    fun pareceCorridaAceita(linhas: List<String>): Boolean {
+        val texto = normalizar(linhas.joinToString(" "))
+        return RegrasExtracao.PALAVRAS_CORRIDA_ACEITA.any { texto.contains(normalizar(it)) }
+    }
+
     /** Último valor antes da distância até o passageiro; se não houver, o primeiro valor da tela. */
     private fun extrairValor(texto: String, posicaoBusca: Int?): Double? {
         val valores = RegrasExtracao.VALOR.findAll(texto).toList()

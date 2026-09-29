@@ -27,6 +27,8 @@ data class Indicador(val texto: String, val cor: Cor?)
  */
 data class Painel(
     val valor: Indicador,
+    /** Lucro estimado: valor − combustível dos km (busca + viagem). */
+    val lucro: Indicador,
     val kmTotal: String,
     val minTotal: String,
     val busca: Indicador,
@@ -71,6 +73,14 @@ object Avaliador {
             else o.minutosViagem ?: 0
         val porHora = if (o.minutosViagem != null && minConsiderado > 0) valor / minConsiderado * 60 else null
 
+        // Lucro real: o combustível é gasto em todos os km (busca + viagem).
+        val kmRodados = (kmBusca ?: 0.0) + (o.kmViagem ?: 0.0)
+        val lucro = if (kmBusca != null || o.kmViagem != null) {
+            valor - Calculos.custoCombustivel(kmRodados, c.consumoKmL, c.precoLitro)
+        } else {
+            null
+        }
+
         val pontos = mutableListOf<Ponto>()
 
         // 1) Destino
@@ -98,6 +108,16 @@ object Avaliador {
                 "Abaixo do mínimo: ${reais(valor)} (mín. ${reais(c.minimoCorrida)})")
             Cor.AMARELO -> Ponto(Cor.AMARELO, "valor perto do mínimo, ${falaReais(valor)}", "Valor no limite: ${reais(valor)}")
             Cor.VERDE -> Ponto(Cor.VERDE, "valor acima do mínimo, ${falaReais(valor)}", "Valor acima do mínimo: ${reais(valor)}")
+        }
+
+        // 3b) Lucro da corrida (descontando o combustível)
+        val corLucro = faixaMinimo(lucro, c.lucroMinimoCorrida, margem)
+        when (corLucro) {
+            null -> Unit
+            Cor.VERMELHO -> pontos += Ponto(Cor.VERMELHO, "lucro baixo, ${falaReais(lucro!!)}",
+                "Lucro baixo: ${reais(lucro)} (mín. ${reais(c.lucroMinimoCorrida)})")
+            Cor.AMARELO -> pontos += Ponto(Cor.AMARELO, "lucro no limite, ${falaReais(lucro!!)}", "Lucro no limite: ${reais(lucro)}")
+            Cor.VERDE -> pontos += Ponto(Cor.VERDE, "lucro de ${falaReais(lucro!!)}", "Lucro: ${reais(lucro)}")
         }
 
         // 4) Valor por km
@@ -150,6 +170,7 @@ object Avaliador {
         val minTotal = (o.minutosAtePassageiro ?: 0) + (o.minutosViagem ?: 0)
         val painel = Painel(
             valor = Indicador(reais(valor), corValor),
+            lucro = Indicador(lucro?.let { reais(it) } ?: "–", corLucro),
             kmTotal = if (kmTotal > 0) "${km(kmTotal)} km" else "– km",
             minTotal = if (minTotal > 0) "$minTotal min" else "– min",
             busca = Indicador(kmBusca?.let { "${km(it)} km" } ?: "–", corBusca),

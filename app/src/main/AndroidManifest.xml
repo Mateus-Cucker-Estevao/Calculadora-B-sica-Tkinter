@@ -11,7 +11,10 @@
         android:name="android.permission.INTERNET"
         tools:node="remove" />
 
-    <!-- Só para o PLANO B (leitura por imagem): serviço em primeiro plano com captura de tela. -->
+    <!-- Aviso flutuante por cima do Uber ("Sobrepor a outros apps"). -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Leitura da tela durante o turno: serviço em primeiro plano com captura de tela. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
@@ -22,7 +25,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AvaliadorCorridas">
 
-        <!-- Tela principal (configurações) -->
+        <!-- Tela principal: Turnos e Parâmetros -->
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
@@ -33,42 +36,9 @@
             </intent-filter>
         </activity>
 
-        <!--
-            Serviço de acessibilidade: lê o texto da tela do Uber Driver.
-            A permissão BIND_ACCESSIBILITY_SERVICE garante que só o sistema Android
-            pode se conectar a ele.
-        -->
+        <!-- Lê as ofertas pela imagem da tela durante o turno (só depois que você autoriza). -->
         <service
-            android:name=".servico.OfertaAccessibilityService"
-            android:exported="true"
-            android:label="@string/servico_nome"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
-        </service>
-
-        <!-- Botão nas "Configurações rápidas" (a cortina de cima) para ligar/desligar -->
-        <service
-            android:name=".servico.MonitorTileService"
-            android:exported="true"
-            android:icon="@drawable/ic_tile"
-            android:label="@string/tile_nome"
-            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
-            <intent-filter>
-                <action android:name="android.service.quicksettings.action.QS_TILE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
-                android:value="true" />
-        </service>
-
-        <!-- PLANO B: lê as ofertas pela imagem da tela (só quando você liga e autoriza) -->
-        <service
-            android:name=".servico.CapturaTelaService"
+            android:name=".servico.MonitorService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
 

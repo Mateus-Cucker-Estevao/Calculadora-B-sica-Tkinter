@@ -115,7 +115,7 @@ class RegrasTest {
         assertEquals(Cor.VERDE, r.cor)
         assertEquals(
             "Corrida boa. Pontos fortes: passageiro perto, 1,0 quilômetros; valor acima do mínimo, 25 reais; " +
-                "bom valor por quilômetro, 2 reais e 50 centavos; bom ganho por hora, 88 reais; nota boa, 4,95.",
+                "lucro de 19 reais e 28 centavos; bom valor por quilômetro, 2 reais e 50 centavos; bom ganho por hora, 88 reais; nota boa, 4,95.",
             r.fala,
         )
     }
@@ -160,7 +160,7 @@ class RegrasTest {
         assertEquals(Cor.VERMELHO, r.cor)
         assertEquals(
             "Corrida ruim. Pontos fracos: barata demais, 1 real e 60 centavos por quilômetro. " +
-                "No limite: por hora no limite, 49 reais. " +
+                "No limite: lucro no limite, 6 reais e 24 centavos; por hora no limite, 49 reais. " +
                 "Pontos fortes: passageiro perto, 2,7 quilômetros; valor acima do mínimo, 9 reais e 73 centavos; " +
                 "nota boa, 4,94.",
             r.fala,
@@ -206,7 +206,8 @@ class RegrasTest {
         assertEquals(Cor.AMARELO, r.cor)
         assertEquals(
             "Corrida no limite. No limite: passageiro um pouco longe, 3,8 quilômetros; " +
-                "valor perto do mínimo, 8 reais e 50 centavos; no limite, 1 real e 98 centavos por quilômetro. " +
+                "valor perto do mínimo, 8 reais e 50 centavos; lucro no limite, 6 reais e 4 centavos; " +
+                "no limite, 1 real e 98 centavos por quilômetro. " +
                 "Pontos fortes: bom ganho por hora, 43 reais; nota boa, 4,95.",
             r.fala,
         )
@@ -220,7 +221,7 @@ class RegrasTest {
             "Corrida ruim. Pontos fracos: barata demais, 1 real e 29 centavos por quilômetro; pouco por hora, 33 reais por hora.",
             r.fala,
         )
-        assertEquals(5, r.pontos.size) // o texto da tela de teste continua mostrando tudo
+        assertEquals(6, r.pontos.size) // o texto da tela de teste continua mostrando tudo
     }
 
     // ---- Painel flutuante (modelo GigU) ----
@@ -240,6 +241,7 @@ class RegrasTest {
         assertEquals(4.87, o.nota!!, 0.001)
         val p = Avaliador.avaliar(o, cfg).painel!!
         assertEquals("R$ 19,59", p.valor.texto)
+        assertEquals("R$ 13,07", p.lucro.texto) // 19,59 − 11,4 km ÷ 11 km/l × R$ 6,29
         assertEquals("11,4 km", p.kmTotal)
         assertEquals("24 min", p.minTotal)
         assertEquals("2,9 km", p.busca.texto)

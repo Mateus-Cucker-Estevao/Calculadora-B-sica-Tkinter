@@ -11,6 +11,9 @@ object Preferencias {
     private fun prefs(ctx: Context): SharedPreferences =
         ctx.applicationContext.getSharedPreferences(ARQUIVO, Context.MODE_PRIVATE)
 
+    private fun SharedPreferences.double(chave: String, padrao: Double): Double =
+        getFloat(chave, padrao.toFloat()).toDouble()
+
     fun carregar(ctx: Context): Configuracao {
         val p = prefs(ctx)
         val padrao = Configuracao()
@@ -18,14 +21,16 @@ object Preferencias {
             ?.split('\n')?.map { it.trim() }?.filter { it.isNotEmpty() }
             ?: padrao.destinosBloqueados
         return Configuracao(
-            monitorando = p.getBoolean("monitorando", padrao.monitorando),
             modoDiagnostico = p.getBoolean("diagnostico", padrao.modoDiagnostico),
             destinosBloqueados = destinos,
-            minimoPorKm = p.getFloat("minimoPorKm", padrao.minimoPorKm.toFloat()).toDouble(),
-            minimoCorrida = p.getFloat("minimoCorrida", padrao.minimoCorrida.toFloat()).toDouble(),
-            maxKmAtePassageiro = p.getFloat("maxKmBusca", padrao.maxKmAtePassageiro.toFloat()).toDouble(),
-            minimoPorHora = p.getFloat("minimoPorHora", padrao.minimoPorHora.toFloat()).toDouble(),
-            notaMinima = p.getFloat("notaMinima", padrao.notaMinima.toFloat()).toDouble(),
+            consumoKmL = p.double("consumoKmL", padrao.consumoKmL),
+            precoLitro = p.double("precoLitro", padrao.precoLitro),
+            minimoPorKm = p.double("minimoPorKm", padrao.minimoPorKm),
+            minimoCorrida = p.double("minimoCorrida", padrao.minimoCorrida),
+            lucroMinimoCorrida = p.double("lucroMinimo", padrao.lucroMinimoCorrida),
+            maxKmAtePassageiro = p.double("maxKmBusca", padrao.maxKmAtePassageiro),
+            minimoPorHora = p.double("minimoPorHora", padrao.minimoPorHora),
+            notaMinima = p.double("notaMinima", padrao.notaMinima),
             margemAmareloPct = p.getInt("margemAmarelo", padrao.margemAmareloPct),
             incluirBuscaNoCalculo = p.getBoolean("incluirBusca", padrao.incluirBuscaNoCalculo),
             segundosBanner = p.getInt("segundosBanner", padrao.segundosBanner),
@@ -36,11 +41,13 @@ object Preferencias {
 
     fun salvar(ctx: Context, c: Configuracao) {
         prefs(ctx).edit()
-            .putBoolean("monitorando", c.monitorando)
             .putBoolean("diagnostico", c.modoDiagnostico)
             .putString("destinos", c.destinosBloqueados.joinToString("\n"))
+            .putFloat("consumoKmL", c.consumoKmL.toFloat())
+            .putFloat("precoLitro", c.precoLitro.toFloat())
             .putFloat("minimoPorKm", c.minimoPorKm.toFloat())
             .putFloat("minimoCorrida", c.minimoCorrida.toFloat())
+            .putFloat("lucroMinimo", c.lucroMinimoCorrida.toFloat())
             .putFloat("maxKmBusca", c.maxKmAtePassageiro.toFloat())
             .putFloat("minimoPorHora", c.minimoPorHora.toFloat())
             .putFloat("notaMinima", c.notaMinima.toFloat())
@@ -50,12 +57,5 @@ object Preferencias {
             .putBoolean("voz", c.vozAtiva)
             .putBoolean("falarFortes", c.falarPontosFortes)
             .apply()
-    }
-
-    /** Liga/desliga o monitoramento e devolve o novo estado. */
-    fun alternarMonitoramento(ctx: Context): Boolean {
-        val novo = !carregar(ctx).monitorando
-        prefs(ctx).edit().putBoolean("monitorando", novo).apply()
-        return novo
     }
 }
