@@ -1,317 +1,176 @@
 # Avaliador de Corridas (Uber Driver)
 
-App Android para uso pessoal. Ele lê a tela de oferta do **Uber Driver** e avisa, por voz e com um
-banner colorido, se a corrida atende aos seus critérios.
+App Android para uso pessoal, organizado **por turnos**. Durante o turno ele lê as ofertas do
+**Uber Driver** pela imagem da tela, avisa por voz e com um aviso colorido se a corrida vale a pena,
+e no fim mostra o **lucro real** do turno — descontando o combustível de **todos** os km rodados,
+inclusive os de deslocamento sem passageiro.
 
 - ✅ **Só lê e avisa.** Nunca toca em botões, nunca aceita nem recusa corridas.
-- ✅ **Nenhum dado sai do celular.** O app nem tem permissão de internet.
-- ✅ **Não guarda dados de passageiros** (só o modo diagnóstico grava texto, e só quando você liga).
+- ✅ **Nada sai do celular.** O app nem tem permissão de internet. Turnos ficam num arquivo local.
+- ✅ **Não guarda dados de passageiros**: as corridas têm só números (valor, km, minutos, nota).
 
 ---
 
 ## Sumário
 
-0. [Jeito mais rápido: baixar o APK pronto do GitHub](#0-jeito-mais-rápido-baixar-o-apk-pronto-do-github)
-1. [Instalar o Android Studio e abrir o projeto](#1-instalar-o-android-studio-e-abrir-o-projeto)
-2. [Estrutura do projeto (o que cada arquivo faz)](#2-estrutura-do-projeto)
-3. [Gerar o APK e instalar no celular](#3-gerar-o-apk-e-instalar-no-celular)
-4. [Ativar o serviço de acessibilidade](#4-ativar-o-serviço-de-acessibilidade)
-5. [Usar o app](#5-usar-o-app)
-6. [Modo diagnóstico: calibrar a leitura das ofertas](#6-modo-diagnóstico-calibrar-a-leitura-das-ofertas)
-7. [Problemas comuns](#7-problemas-comuns)
+1. [Baixar e instalar](#1-baixar-e-instalar)
+2. [Permissões](#2-permissões)
+3. [Como usar: turnos](#3-como-usar-turnos)
+4. [Parâmetros](#4-parâmetros)
+5. [Como as contas são feitas](#5-como-as-contas-são-feitas)
+6. [Calibrar a leitura (modo diagnóstico)](#6-calibrar-a-leitura-modo-diagnóstico)
+7. [Estrutura do projeto](#7-estrutura-do-projeto)
+8. [Gerar o APK no Android Studio](#8-gerar-o-apk-no-android-studio)
+9. [Problemas comuns](#9-problemas-comuns)
 
 ---
 
-## 0. Jeito mais rápido: baixar o APK pronto do GitHub
+## 1. Baixar e instalar
 
-Este repositório tem uma "linha de montagem" automática (GitHub Actions) que gera o APK sempre que
-o código muda. Você não precisa instalar nada no computador para testar.
+O GitHub gera o APK sozinho a cada mudança no código:
 
-1. No celular (ou no computador), abra o repositório no GitHub e entre na aba **Actions**.
-2. Toque na execução mais recente chamada **"Gerar APK"** (precisa ter o ✅ verde).
-3. Role até **Artifacts** e baixe **AvaliadorCorridas-apk** (vem em um `.zip`).
-4. Abra o `.zip` no gerenciador de arquivos do celular e toque em **AvaliadorCorridas.apk**.
-5. Pule para o passo [3.3 — Instalar no celular](#33-instalar-no-celular).
+1. Abra o repositório no GitHub → aba **Actions** → execução mais recente **"Gerar APK"** (✅ verde).
+2. Em **Artifacts**, baixe **AvaliadorCorridas-apk** (um `.zip`) e extraia o `AvaliadorCorridas.apk`.
+3. Instale:
+   - **Pelo computador (recomendado):** ative a *Depuração USB* no celular (Configurações → Sobre o
+     telefone → toque 7 vezes em "Número da versão" → Opções do desenvolvedor → Depuração USB),
+     baixe o [SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools),
+     ligue o cabo e rode `adb install -r AvaliadorCorridas.apk`.
+   - **Pelo celular:** toque no APK e permita instalar desta fonte. Se o Play Protect bloquear,
+     use o caminho pelo computador.
 
-> Você precisa estar logado no GitHub para baixar os "Artifacts".
+> Atualizar: instale o APK novo por cima (`adb install -r ...`). Seus turnos e parâmetros ficam.
 
----
+## 2. Permissões
 
-## 1. Instalar o Android Studio e abrir o projeto
+| Permissão | Para quê | Quando |
+|---|---|---|
+| **Sobrepor a outros apps** | Mostrar o aviso colorido por cima do Uber | Uma vez (o app pede no primeiro turno, ou em Parâmetros) |
+| **Gravar/compartilhar a tela** | Ler as ofertas pela imagem | **A cada turno** (o Android exige). Escolha **"Tela inteira"** e toque em **Iniciar** |
 
-Faça isso quando quiser **alterar** o app (por exemplo, ajustar as regras de leitura).
+Não precisa mais de acessibilidade nem de "configurações restritas".
 
-### 1.1 Instalar
+**Voz em português:** Configurações → Sistema → Idiomas → Saída de texto para fala → instale os dados
+de voz **Português (Brasil)**.
 
-1. Acesse **https://developer.android.com/studio** e baixe o Android Studio.
-2. Instale com as opções padrão (Next, Next, Finish).
-3. Na primeira abertura, escolha **Standard** no assistente. Ele baixa o Android SDK sozinho
-   (demora alguns minutos e precisa de uns 5 GB livres).
+## 3. Como usar: turnos
 
-### 1.2 Baixar este projeto
+**Tela Turnos** (igual a um app de finanças):
 
-Opção A, sem Git: no GitHub, clique em **Code → Download ZIP** e descompacte a pasta.
+- No topo, o **mês** (setas ‹ › para trocar) e o estado: **Monitorando**, **Leitura parada** ou **Parado**.
+- **Resumo do mês:** lucro real líquido, faturamento, custos (combustível), km rodados,
+  aproveitamento pago (% dos km que foram em corrida), turnos, horas e média de lucro por hora.
 
-Opção B, com Git:
+**Começar:** toque em **＋ Novo turno** → digite o **KM do odômetro** do painel do carro → autorize a
+gravação da tela. Pronto: abra o Uber e fique online.
 
-```bash
-git clone https://github.com/Mateus-Cucker-Estevao/Calculadora-B-sica-Tkinter.git
-```
+Durante o turno:
+- Cada oferta aparece com o **aviso** no topo da tela (enquanto a oferta estiver aparecendo):
 
-### 1.3 Abrir
+  ```
+  ┌──────────── borda verde / amarela / vermelha ────────────┐
+  │    ✅ Valor      │    ❌ R$/km     │     ✅ Nota          │
+  │    R$ 19,59      │      1,72       │      4,87            │
+  │ ✅ lucro R$ 13,07 │                 │                      │
+  │ ─────────────────────────────────────────────────────── │
+  │ ✅ Até passageiro │ Distância total │ Tempo estimado       │
+  │      2,9 km       │    11,4 km      │    24 min            │
+  └───────────────────────────────────────────────────────────┘
+  ```
+- A **voz** fala o diagnóstico (pontos fracos, no limite e fortes).
+- Quando você **aceita** uma oferta, ela entra sozinha como corrida do turno (veja a seção 6).
+- O cartão **Turno em andamento** mostra corridas, faturamento e lucro estimado. Se a leitura parar
+  (celular reiniciou, você tocou em "Parar compartilhamento"...), toque em **Retomar leitura**.
 
-1. No Android Studio: **File → Open** (ou "Open" na tela inicial).
-2. Selecione a **pasta do projeto** (a que tem o arquivo `settings.gradle.kts`).
-3. Aguarde o "Gradle Sync" terminar (barra de progresso embaixo). Na primeira vez demora mais.
+**Terminar:** toque em **Finalizar turno** → digite o **Km do odômetro final**. O turno aparece na
+lista do mês, **separado por dia**. Toque num turno para ver os detalhes e:
+- **editar** odômetros, consumo e preço do combustível;
+- **adicionar, editar ou excluir corridas** (se alguma não foi registrada sozinha);
+- **excluir** o turno.
 
-> **Não precisa criar um projeto novo.** O projeto já está pronto aqui. Se mesmo assim quiser criar
-> do zero: *New Project → Empty Activity*, nome "AvaliadorCorridas", pacote
-> `com.mateus.avaliadorcorridas`, linguagem Kotlin, Minimum SDK "API 29 (Android 10)". Depois
-> copie os arquivos deste repositório por cima.
+## 4. Parâmetros
 
----
+- **Veículo e combustível:** consumo real (km/l) e preço (R$/L) → custo por km. Cada turno guarda os
+  valores do dia em que começou (mudar depois não altera turnos antigos; dá para editar no turno).
+- **Critérios das ofertas:** R$/km mínimo, valor mínimo, **lucro mínimo** (já sem combustível),
+  distância máxima até o passageiro, R$/h mínimo, nota mínima, margem do amarelo.
+- **Destinos bloqueados**, **aviso e voz**, **permissão do aviso**, **testar leitura** (ouve a voz e vê o
+  aviso sem precisar de oferta real) e **modo diagnóstico**.
 
-## 2. Estrutura do projeto
+## 5. Como as contas são feitas
 
-```
-├── settings.gradle.kts            ← nome do projeto e de onde baixar bibliotecas
-├── build.gradle.kts               ← versões dos plugins (Android, Kotlin)
-├── gradle.properties              ← opções do Gradle
-├── gradlew / gradlew.bat / gradle/ ← "Gradle Wrapper": baixa o Gradle certo automaticamente
-├── .github/workflows/gerar-apk.yml ← gera o APK automaticamente no GitHub
-└── app/
-    ├── build.gradle.kts           ← configuração do app (SDK mínimo, bibliotecas)
-    ├── debug.keystore             ← chave de assinatura fixa (uso pessoal)
-    └── src/
-        ├── main/
-        │   ├── AndroidManifest.xml         ← "RG" do app: telas, serviços, permissões
-        │   ├── res/xml/accessibility_service_config.xml ← diz que o serviço só olha o Uber
-        │   ├── res/xml/file_paths.xml      ← permite compartilhar o log
-        │   ├── res/values/…                ← textos, cores e tema
-        │   ├── res/drawable/, mipmap-…/    ← ícones
-        │   └── java/com/mateus/avaliadorcorridas/
-        │       ├── regras/
-        │       │   ├── RegrasExtracao.kt   ★ AS REGRAS DE LEITURA (edite aqui!)
-        │       │   ├── ExtratorOferta.kt   ← aplica as regras e monta a "Oferta"
-        │       │   └── Avaliador.kt        ← decide verde/amarelo/vermelho e o que falar
-        │       ├── dados/
-        │       │   ├── Configuracao.kt     ← seus critérios (valores padrão)
-        │       │   ├── Preferencias.kt     ← salva os critérios no celular
-        │       │   └── LogDiagnostico.kt   ← arquivo de log do modo diagnóstico
-        │       ├── servico/
-        │       │   ├── OfertaAccessibilityService.kt ← lê a tela do Uber em segundo plano
-        │       │   ├── Falador.kt          ← voz em português (Text-to-Speech)
-        │       │   ├── BannerSobreposto.kt ← banner colorido no topo da tela
-        │       │   └── MonitorTileService.kt ← botão liga/desliga nas Configurações rápidas
-        │       └── ui/
-        │           └── MainActivity.kt     ← tela principal (Jetpack Compose)
-        └── test/…/RegrasTest.kt            ← testes automáticos das regras de leitura
-```
+**Por oferta:**
+- **R$/km** = valor ÷ (km até o passageiro + km da viagem).
+- **R$/h** = valor ÷ (minutos de busca + viagem) × 60.
+- **Lucro** = valor − (km até o passageiro + km da viagem) ÷ consumo × preço do combustível.
+- Cada critério vira ✅ (bom), ⚠️ (no limite: até X% do limite) ou ❌ (ruim). A borda do aviso tem a
+  cor do pior critério. Nota baixa só deixa amarelo.
 
-### Como o app funciona, em 5 passos
+**Por turno:**
+- **Km total** = odômetro final − odômetro inicial.
+- **Km de deslocamento** = km total − km das corridas (o que você rodou sem ser pago).
+- **Combustível** = km total ÷ consumo × preço. (Com o turno aberto, é estimado só pelas corridas.)
+- **Lucro real** = soma das corridas − combustível. **Lucro/h** = lucro ÷ horas do turno.
+- **Aproveitamento pago** = km das corridas ÷ km total.
 
-1. O Uber mostra uma oferta → o Android avisa o nosso **serviço de acessibilidade**
-   (ele só recebe avisos do pacote `com.ubercab.driver`).
-2. O serviço junta todos os textos da tela em uma lista de linhas.
-3. O **ExtratorOferta** usa as regras do **RegrasExtracao.kt** para achar valor, distâncias e destino.
-4. O **Avaliador** confere **todos** os seus critérios e monta um diagnóstico. Cada critério vira um
-   ponto forte ✅, no limite ⚠️ ou fraco ❌:
-   - **destino**: bloqueado ❌ (só aparece quando é bloqueado);
-   - **distância até o passageiro**: longe ❌, um pouco longe ⚠️ ou perto ✅;
-   - **valor mínimo da corrida**: abaixo ❌, perto do mínimo ⚠️ ou acima ✅;
-   - **R$/km**: barata demais ❌, no limite ⚠️ ou bom valor ✅;
-   - **R$/hora**: pouco por hora ❌, no limite ⚠️ ou bom ganho ✅;
-   - **nota do passageiro**: baixa ⚠️ ou boa ✅.
+## 6. Calibrar a leitura (modo diagnóstico)
 
-   A cor da corrida é a do pior ponto. "No limite" = até X% do limite (a "margem do amarelo").
-   Exemplo de fala: *"Corrida ruim. Pontos fracos: passageiro longe, 11,4 quilômetros; barata demais,
-   1 real e 9 centavos por quilômetro. Pontos fortes: destino liberado; valor acima do mínimo, 12 reais
-   e 40 centavos."*
-5. O app fala o diagnóstico e mostra um **aviso flutuante** no topo da tela, com 6 informações:
+As regras de leitura ficam em
+**`app/src/main/java/com/mateus/avaliadorcorridas/regras/RegrasExtracao.kt`**:
 
-   ```
-   ┌──────────── borda verde / amarela / vermelha ────────────┐
-   │    ✅ Valor      │    ❌ R$/km     │     ✅ Nota          │
-   │    R$ 19,59      │      1,72       │      4,87            │
-   │ ─────────────────────────────────────────────────────── │
-   │ ✅ Até passageiro │ Distância total │ Tempo estimado       │
-   │      2,9 km       │    11,4 km      │    24 min            │
-   └───────────────────────────────────────────────────────────┘
-   ```
-
-   - A cor da borda é o resultado geral (a do pior critério, incluindo destino bloqueado e R$/h).
-   - O aviso **fica na tela enquanto a oferta estiver aparecendo** e some ~3 s depois que ela sai
-     (aceita, recusada ou expirada). No botão "Testar", fica um tempo fixo.
-   - **Distância total** = busca + viagem. **Tempo estimado** = minutos de busca + viagem.
-   - **Nota** do passageiro abaixo da nota mínima deixa amarelo, mas não reprova a corrida sozinha.
-
-**R$/km** = valor ÷ (distância até o passageiro + distância da viagem). Dá para desligar a opção
-"Contar a distância até o passageiro no R$/km" para usar só a distância da viagem.
-
----
-
-## 3. Gerar o APK e instalar no celular
-
-### 3.1 Pelo Android Studio (mais fácil)
-
-1. Menu **Build → Build App Bundle(s) / APK(s) → Build APK(s)**.
-2. Quando terminar, aparece um aviso no canto: clique em **locate**.
-3. O arquivo é `app/build/outputs/apk/debug/app-debug.apk`.
-
-### 3.2 Pelo terminal
-
-```bash
-./gradlew assembleDebug        # Linux/Mac
-gradlew.bat assembleDebug      # Windows
-```
-
-### 3.3 Instalar no celular
-
-1. Leve o APK para o celular: cabo USB, Google Drive, WhatsApp para você mesmo… ou baixe direto do
-   GitHub (passo 0).
-2. Toque no arquivo `.apk`.
-3. O Android vai pedir para **permitir instalar apps desta fonte** (ex.: "Arquivos" ou "Chrome").
-   Toque em **Configurações → ativar "Permitir desta fonte"** e volte.
-4. Toque em **Instalar**. Se o Play Protect avisar, toque em **Mais detalhes → Instalar mesmo assim**
-   (é normal para apps que não vêm da Play Store).
-
-> **Atualizar:** instale o APK novo por cima do antigo. Suas configurações são mantidas.
-
-### 3.4 Alternativa: instalar direto pelo cabo (Android Studio)
-
-1. No celular: **Configurações → Sobre o telefone → toque 7 vezes em "Número da versão"**
-   para liberar as "Opções do desenvolvedor".
-2. **Configurações → Sistema → Opções do desenvolvedor → Depuração USB: ativar**.
-3. Ligue o cabo, aceite a pergunta no celular e clique no ▶ (Run) verde do Android Studio.
-
----
-
-## 4. Ativar o serviço de acessibilidade
-
-1. Abra o app **Avaliador de Corridas**.
-2. Toque em **Abrir configurações de acessibilidade**.
-3. Procure **Avaliador de Corridas** (às vezes fica dentro de **Apps instalados** ou
-   **Serviços baixados**) e ative. Confirme em **Permitir**.
-
-### ⚠️ "Configuração restrita" (Android 13 ou mais novo)
-
-Apps instalados por APK têm a acessibilidade bloqueada até você liberar:
-
-1. No app, toque em **Abrir informações do app**
-   (ou: Configurações → Apps → Avaliador de Corridas).
-2. Toque nos **3 pontinhos (⋮)** no canto de cima → **Permitir configurações restritas**.
-   (Se não aparecer, tente primeiro ativar a acessibilidade uma vez; aí a opção aparece.)
-3. Volte para a acessibilidade e ative o serviço.
-
-### E a permissão de sobreposição de tela?
-
-**Não é necessária.** O banner usa uma janela especial que só serviços de acessibilidade podem
-criar (`TYPE_ACCESSIBILITY_OVERLAY`). Ativando a acessibilidade, o banner já funciona.
-Ele também é "não tocável": seus toques passam direto para o Uber.
-
-### Voz em português
-
-Se a voz sair em outro idioma ou não sair: **Configurações → Sistema → Idiomas → Saída de
-texto para fala (Text-to-speech)** → escolha o "Speech Services by Google" → **Instalar dados de
-voz → Português (Brasil)**.
-
----
-
-## 5. Usar o app
-
-1. Ajuste os **Critérios** e toque em **Salvar critérios**.
-2. Adicione os **Destinos bloqueados** (maiúsculas e acentos não importam).
-3. Use **Testar leitura** para ouvir a voz e ver o banner sem precisar de uma oferta real.
-   O exemplo já vem com "Cocal do Sul" e deve dar 🔴 "Atenção: corrida para Cocal do Sul".
-4. Toque no botão grande para **LIGAR** o monitoramento e abra o Uber Driver.
-
-**Ligar/desligar rápido:** puxe a cortina de notificações duas vezes → ícone de lápis (editar) →
-arraste o botão **Avaliador** para a área ativa. Um toque liga/desliga e o app fala o novo estado.
-
----
-
-## 6. Modo diagnóstico: calibrar a leitura das ofertas
-
-O layout do Uber muda com frequência. O modo diagnóstico mostra **exatamente** o texto que o app
-lê, para você ajustar as regras.
-
-### 6.1 Coletar
-
-1. Na tela do app, ligue **Modo diagnóstico → Gravar o texto lido da tela do Uber**.
-   (Funciona mesmo com o monitoramento desligado.)
-2. Fique online no Uber e espere **algumas ofertas** aparecerem (não precisa aceitar).
-3. Volte ao app e toque em **Ver log**.
-
-### 6.2 Ler o log
-
-Cada "foto" da tela aparece assim:
-
-```
-===== 26/09 10:36:12 =====
-[00] UberX
-[01] Exclusivo
-[02] R$ 9,73
-[03] R$1,60/km aprox.
-[04] 4,94 (32)
-[05] 5 min (2.7 km)
-[06] Rua Desafio Jovem, Recanto Verde, Criciúma
-[07] 7 minutos (3.4 km)
-[08] Avenida Victor Meireles, 1275, Santa Bárbara, Criciúma
-[09] Aceitar
---> LEITURA: OFERTA  valor=9.73 | busca=2.7 km (5 min) | viagem=3.4 km (7 min) | destino=Avenida Victor Meireles, 1275, Santa Bárbara, Criciúma
-
-##### 26/09 10:36:13  AVISO VERMELHO: "Abaixo do mínimo: 1 real e 60 centavos por quilômetro"  (R$ 9,73 · 6,1 km · R$ 1,60/km · busca 2,7 km)
-```
-
-- As linhas `[00]`, `[01]`… são os textos da tela, na ordem em que o app os encontrou.
-- A linha **`--> LEITURA`** mostra o que o app entendeu. Se algum campo estiver com `?` (ou errado)
-  numa oferta de verdade, a regra correspondente precisa de ajuste.
-- As linhas **`#####`** mostram quando o serviço foi conectado e cada **AVISO** que foi falado.
-
-### 6.3 Ajustar as regras
-
-Tudo fica em **`app/src/main/java/com/mateus/avaliadorcorridas/regras/RegrasExtracao.kt`**:
-
-| O que não foi lido | Onde mexer |
+| O quê | Onde |
 |---|---|
-| Valor | `VALOR` |
-| Distância até o passageiro | `DISTANCIA_ATE_PASSAGEIRO` (lista de regras) |
-| Distância da viagem | `DISTANCIA_VIAGEM` (lista de regras) |
-| Destino | `DESTINO_COM_ROTULO` e `LINHAS_QUE_NAO_SAO_DESTINO` |
+| Valor, distâncias, destino, nota | `VALOR`, `DISTANCIA_ATE_PASSAGEIRO`, `DISTANCIA_VIAGEM`, `DESTINO_COM_ROTULO`, `NOTA` |
+| **Corrida aceita** (tela depois de aceitar) | `PALAVRAS_CORRIDA_ACEITA` ⚠️ ainda não calibrado |
 
-**Exemplo:** se o log mostra `Busca de 6 min • 2,1 km` (formato novo), adicione esta regra à lista
-`DISTANCIA_ATE_PASSAGEIRO`:
+Para calibrar:
+1. Em Parâmetros, ligue o **Modo diagnóstico** e apague o log.
+2. Faça um turno normal: aceite e conclua pelo menos uma corrida.
+3. Em **Ver log**, procure as telas depois da oferta aceita. Linhas `##### CORRIDA ACEITA` mostram
+   quando o app registrou uma corrida. Se nenhuma apareceu, veja quais palavras a tela de corrida
+   mostra e coloque em `PALAVRAS_CORRIDA_ACEITA` (ou mande o log para ajustar).
+4. Use **Testar leitura** para conferir textos de oferta sem sair de carro.
+5. Terminou? Desligue o diagnóstico e **apague** o log (pode conter o nome do passageiro).
 
-```kotlin
-Regex("""busca\s+de\s+$TEMPO\s*•\s*$DIST""", I),
+## 7. Estrutura do projeto
+
+```
+app/src/main/java/com/mateus/avaliadorcorridas/
+├── regras/
+│   ├── RegrasExtracao.kt   ★ regras de leitura (edite aqui)
+│   ├── ExtratorOferta.kt   ← aplica as regras ao texto lido
+│   ├── Avaliador.kt        ← critérios, cores, voz e painel do aviso
+│   └── Calculos.kt         ← contas do turno e do mês
+├── dados/
+│   ├── Configuracao.kt / Preferencias.kt   ← parâmetros
+│   ├── Turno.kt / RepositorioTurnos.kt     ← turnos e corridas (arquivo turnos.json local)
+│   └── LogDiagnostico.kt                   ← log do modo diagnóstico
+├── servico/
+│   ├── MonitorService.kt   ← durante o turno: captura a tela, lê (ML Kit offline), avisa, registra corridas
+│   ├── BannerSobreposto.kt ← aviso flutuante
+│   └── Falador.kt          ← voz em português
+└── ui/
+    ├── MainActivity.kt     ← navegação Turnos / Parâmetros
+    ├── TelaTurnos.kt       ← tela do mês e turno em andamento
+    ├── TelaDetalheTurno.kt ← detalhes, edição e exclusão
+    ├── TelaParametros.kt   ← parâmetros, teste e diagnóstico
+    └── Tema.kt / Componentes.kt
+app/src/test/…              ← testes automáticos (leitura, avaliação e contas)
 ```
 
-`$TEMPO` e `$DIST` são pedaços prontos, definidos no começo do arquivo: eles já entendem
-"6 min", "2,1 km", "800 m" etc. Mantenha os nomes `min` e `km`, porque o código usa esses nomes.
+## 8. Gerar o APK no Android Studio
 
-### 6.4 Conferir sem sair dirigindo
+1. Instale o [Android Studio](https://developer.android.com/studio) (opções padrão).
+2. **File → Open** → pasta do projeto (a que tem `settings.gradle.kts`) → aguarde o Gradle Sync.
+3. **Build → Build App Bundle(s) / APK(s) → Build APK(s)** → `app/build/outputs/apk/debug/app-debug.apk`.
+4. Testes: botão direito em `app/src/test` → **Run Tests**.
 
-1. No **Ver log**, toque e segure para selecionar e copiar as linhas de uma oferta.
-2. Cole na seção **Testar leitura** (pode colar com os `[00]`, o app remove) e toque em **Testar**.
-3. Veja se a "Leitura" saiu certa. Se não saiu, ajuste a regra, gere o APK de novo e repita.
-
-Dica: acrescente o texto real no arquivo `app/src/test/.../RegrasTest.kt` como um novo teste.
-Assim você garante que uma mudança futura não estraga a leitura (no Android Studio: botão direito
-no arquivo → **Run 'RegrasTest'**).
-
-### 6.5 Terminou? Limpe
-
-O log pode conter o nome do passageiro. Depois de calibrar, **desligue o modo diagnóstico** e toque
-em **Apagar**. O botão **Compartilhar** só envia o arquivo se você escolher para onde.
-
----
-
-## 7. Problemas comuns
+## 9. Problemas comuns
 
 | Problema | Solução |
 |---|---|
-| Não fala nada | Confira se o serviço está ativo, se o botão está LIGADO e se "Aviso por voz" está ligado. Veja a voz em português (passo 4). |
-| O log fica vazio | O serviço de acessibilidade está desligado, ou o Uber não estava na tela. Alguns celulares desligam serviços para economizar bateria: Configurações → Apps → Avaliador de Corridas → Bateria → **Sem restrições**. |
-| O serviço desliga sozinho (Xiaomi/Samsung) | Tire o app da otimização de bateria (acima) e, na Xiaomi, ative **Início automático**. |
-| Avisa na tela errada / não avisa | Use o modo diagnóstico (passo 6) e ajuste `RegrasExtracao.kt`. |
-| "App não instalado" ao atualizar | Desinstale a versão antiga e instale a nova (acontece se o APK foi assinado com outra chave). |
+| Não aparece o aviso | Parâmetros → "Aviso por cima do Uber" → permitir. |
+| "Leitura parada" | Toque em **Retomar leitura** e autorize "Tela inteira". |
+| Não fala nada | Confira "Aviso por voz", o volume de mídia e a voz em português. |
+| Corridas não entram no turno | Calibre `PALAVRAS_CORRIDA_ACEITA` (seção 6) ou adicione à mão no turno. |
+| O serviço para sozinho (Xiaomi/Samsung) | Configurações → Apps → Avaliador → Bateria → **Sem restrições**. |
