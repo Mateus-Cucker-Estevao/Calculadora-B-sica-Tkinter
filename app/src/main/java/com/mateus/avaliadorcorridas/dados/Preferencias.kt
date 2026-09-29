@@ -25,6 +25,7 @@ object Preferencias {
             destinosBloqueados = destinos,
             consumoKmL = p.double("consumoKmL", padrao.consumoKmL),
             precoLitro = p.double("precoLitro", padrao.precoLitro),
+            manutencaoPorKm = p.double("manutencaoPorKm", padrao.manutencaoPorKm),
             minimoPorKm = p.double("minimoPorKm", padrao.minimoPorKm),
             minimoCorrida = p.double("minimoCorrida", padrao.minimoCorrida),
             lucroMinimoCorrida = p.double("lucroMinimo", padrao.lucroMinimoCorrida),
@@ -45,6 +46,7 @@ object Preferencias {
             .putString("destinos", c.destinosBloqueados.joinToString("\n"))
             .putFloat("consumoKmL", c.consumoKmL.toFloat())
             .putFloat("precoLitro", c.precoLitro.toFloat())
+            .putFloat("manutencaoPorKm", c.manutencaoPorKm.toFloat())
             .putFloat("minimoPorKm", c.minimoPorKm.toFloat())
             .putFloat("minimoCorrida", c.minimoCorrida.toFloat())
             .putFloat("lucroMinimo", c.lucroMinimoCorrida.toFloat())

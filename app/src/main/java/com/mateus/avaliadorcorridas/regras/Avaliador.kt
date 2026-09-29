@@ -27,7 +27,7 @@ data class Indicador(val texto: String, val cor: Cor?)
  */
 data class Painel(
     val valor: Indicador,
-    /** Lucro estimado: valor − combustível dos km (busca + viagem). */
+    /** Lucro estimado: valor − (combustível + manutenção) dos km (busca + viagem). */
     val lucro: Indicador,
     val kmTotal: String,
     val minTotal: String,
@@ -73,10 +73,10 @@ object Avaliador {
             else o.minutosViagem ?: 0
         val porHora = if (o.minutosViagem != null && minConsiderado > 0) valor / minConsiderado * 60 else null
 
-        // Lucro real: o combustível é gasto em todos os km (busca + viagem).
+        // Lucro real: combustível e manutenção valem para todos os km (busca + viagem).
         val kmRodados = (kmBusca ?: 0.0) + (o.kmViagem ?: 0.0)
         val lucro = if (kmBusca != null || o.kmViagem != null) {
-            valor - Calculos.custoCombustivel(kmRodados, c.consumoKmL, c.precoLitro)
+            valor - Calculos.custoRodar(kmRodados, c.consumoKmL, c.precoLitro, c.manutencaoPorKm)
         } else {
             null
         }

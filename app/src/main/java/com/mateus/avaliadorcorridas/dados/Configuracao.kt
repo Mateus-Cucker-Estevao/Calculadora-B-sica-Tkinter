@@ -10,11 +10,16 @@ data class Configuracao(
     val consumoKmL: Double = 11.0,
     /** Preço do combustível (R$ por litro). */
     val precoLitro: Double = 6.29,
+    /**
+     * Manutenção por km rodado (pneus, óleo, revisões, freios, limpeza...).
+     * Recomendado para carro popular 1.0: R$ 0,20 a R$ 0,30 por km.
+     */
+    val manutencaoPorKm: Double = 0.25,
 
     // ---- Critérios das ofertas ----
     val minimoPorKm: Double = 1.80,
     val minimoCorrida: Double = 8.00,
-    /** Lucro mínimo da corrida: valor − combustível dos km (busca + viagem). */
+    /** Lucro mínimo da corrida: valor − (combustível + manutenção) dos km (busca + viagem). */
     val lucroMinimoCorrida: Double = 6.00,
     val maxKmAtePassageiro: Double = 4.0,
     /** Ganho mínimo por hora de corrida: valor ÷ (minutos de busca + viagem) × 60. */

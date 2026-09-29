@@ -24,6 +24,7 @@ class RegrasTest {
         maxKmAtePassageiro = 4.0,
         margemAmareloPct = 10,
         incluirBuscaNoCalculo = true,
+        manutencaoPorKm = 0.0, // os testes antigos consideram só o combustível
     )
 
     private fun oferta(valor: String, busca: String, viagem: String, destino: String) = listOf(
@@ -253,6 +254,16 @@ class RegrasTest {
         assertEquals("4,87", p.nota.texto)
         assertEquals(Cor.VERDE, p.nota.cor)
         assertNull(p.destinoBloqueado)
+    }
+
+    @Test
+    fun lucroDescontaManutencao() {
+        // 19,59 − 11,4 km × (6,29 ÷ 11 + 0,25) = 19,59 − 6,52 − 2,85 = 10,22
+        val o = ExtratorOferta.extrair(
+            listOf("R$ 19,59", "6 minutos (2.9 km) de distância", "Viagem de 18 minutos (8.5 km)", "Centro"),
+        )
+        val p = Avaliador.avaliar(o, cfg.copy(manutencaoPorKm = 0.25)).painel!!
+        assertEquals("R$ 10,22", p.lucro.texto)
     }
 
     @Test

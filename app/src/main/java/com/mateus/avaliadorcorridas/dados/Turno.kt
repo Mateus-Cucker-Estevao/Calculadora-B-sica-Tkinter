@@ -21,7 +21,7 @@ data class Corrida(
 
 /**
  * Um turno de trabalho: começa com o odômetro inicial e termina com o final.
- * O consumo e o preço do combustível ficam guardados no turno (foto do momento),
+ * O consumo, o preço do combustível e a manutenção por km ficam guardados no turno (foto do momento),
  * para que mudar os parâmetros depois não altere o passado.
  */
 data class Turno(
@@ -35,6 +35,8 @@ data class Turno(
     val corridas: List<Corrida> = emptyList(),
     /** Quantas ofertas diferentes apareceram durante o turno. */
     val ofertasVistas: Int = 0,
+    /** Custo de manutenção por km (foto do momento em que o turno começou). */
+    val manutencaoPorKm: Double = 0.0,
 ) {
     val aberto: Boolean get() = fim == null
 }

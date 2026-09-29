@@ -152,7 +152,7 @@ fun TelaTurnos(
             ctx,
             Turno(
                 id = RepositorioTurnos.novoId(), inicio = agoraMs, odometroInicial = odometro,
-                consumoKmL = c.consumoKmL, precoLitro = c.precoLitro,
+                consumoKmL = c.consumoKmL, precoLitro = c.precoLitro, manutencaoPorKm = c.manutencaoPorKm,
             ),
         )
         onMudarMes(mes(agoraMs))
@@ -521,8 +521,8 @@ private fun CartoesRapidos(cfg: Configuracao) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         CartaoRapido("⛽", "Combustível", "${reais(cfg.precoLitro)} / L", "${numero(cfg.consumoKmL, 1)} km/l", Modifier.weight(1f))
         CartaoRapido(
-            "🚗", "Custo por km", "${reais(Calculos.custoPorKm(cfg.consumoKmL, cfg.precoLitro))} / km",
-            "meta > ${reais(cfg.minimoPorKm)}/km", Modifier.weight(1f),
+            "🚗", "Custo por km", "${reais(Calculos.custoPorKm(cfg.consumoKmL, cfg.precoLitro, cfg.manutencaoPorKm))} / km",
+            "com manutenção de ${reais(cfg.manutencaoPorKm)}/km", Modifier.weight(1f),
         )
     }
 }

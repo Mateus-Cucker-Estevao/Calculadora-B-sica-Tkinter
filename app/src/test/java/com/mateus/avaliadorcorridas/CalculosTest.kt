@@ -4,6 +4,7 @@ import com.mateus.avaliadorcorridas.dados.Corrida
 import com.mateus.avaliadorcorridas.dados.Turno
 import com.mateus.avaliadorcorridas.regras.Calculos
 import com.mateus.avaliadorcorridas.regras.ExtratorOferta
+import com.mateus.avaliadorcorridas.regras.ItemManutencao
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -74,6 +75,35 @@ class CalculosTest {
         assertEquals(100.0, m.kmTotal, 0.001)
         assertEquals(0.5, m.aproveitamento!!, 0.001)
         assertEquals(10.0, m.lucroPorHora!!, 0.001) // 40 ÷ 4 h
+    }
+
+    @Test
+    fun turnoComManutencao() {
+        // Mesmo turno de 90 km, agora com R$ 0,25/km de manutenção: 90 × 0,25 = R$ 22,50 a mais de custo.
+        val t = Turno(
+            id = 1, inicio = 0, fim = 4 * hora,
+            odometroInicial = 10_000.0, odometroFinal = 10_090.0,
+            consumoKmL = 11.0, precoLitro = 6.60, manutencaoPorKm = 0.25,
+            corridas = listOf(corrida(150.0, 10.0, 50.0)),
+        )
+        val r = Calculos.resumo(t, agora = 999 * hora)
+        assertEquals(54.0, r.custoCombustivel, 0.001)
+        assertEquals(22.5, r.custoManutencao, 0.001)
+        assertEquals(76.5, r.custoTotal, 0.001)
+        assertEquals(73.5, r.lucro, 0.001) // 150 − 76,50
+    }
+
+    @Test
+    fun calculadoraDeManutencao() {
+        val itens = listOf(
+            ItemManutencao("Pneus", 1400.0, 40_000.0),   // 0,035/km
+            ItemManutencao("Óleo", 280.0, 10_000.0),     // 0,028/km
+            ItemManutencao("Sem km", 500.0, 0.0),        // ignorado (km = 0)
+        )
+        assertEquals(0.063, Calculos.manutencaoPorKm(itens), 0.0001)
+        // Os valores de exemplo do app dão ~R$ 0,27/km, dentro da recomendação (R$ 0,20 a 0,30).
+        assertEquals(0.27, Calculos.manutencaoPorKm(Calculos.ITENS_MANUTENCAO_EXEMPLO), 0.01)
+        assertEquals(0.8218, Calculos.custoPorKm(11.0, 6.29, 0.25), 0.001) // 0,5718 + 0,25
     }
 
     @Test

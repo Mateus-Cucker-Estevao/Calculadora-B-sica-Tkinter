@@ -90,8 +90,15 @@ lista do mês, **separado por dia**. Toque num turno para ver os detalhes e:
 
 ## 4. Parâmetros
 
-- **Veículo e combustível:** consumo real (km/l) e preço (R$/L) → custo por km. Cada turno guarda os
-  valores do dia em que começou (mudar depois não altera turnos antigos; dá para editar no turno).
+- **Custos do carro:**
+  - **Combustível:** consumo real (km/l) e preço (R$/L).
+  - **Manutenção (R$ por km):** pneus, óleo, revisões, freios, limpeza... Recomendado para carro popular
+    1.0: **R$ 0,20 a R$ 0,30 por km**. O botão **🧮 Calcular manutenção por km** abre uma janela onde você
+    lista cada gasto (quanto custa e quantos km dura) e o app calcula e preenche o valor.
+    Conta simples: *custo ÷ km que dura* para cada item, somando tudo (pneus de R$ 1.400 que duram
+    40.000 km = R$ 0,035/km). Ou: tudo que gastou com o carro em 6 meses ÷ km rodados no período.
+  - Cada turno guarda os valores do dia em que começou (mudar depois não altera turnos antigos; dá para
+    editar no turno).
 - **Critérios das ofertas:** R$/km mínimo, valor mínimo, **lucro mínimo** (já sem combustível),
   distância máxima até o passageiro, R$/h mínimo, nota mínima, margem do amarelo.
 - **Destinos bloqueados**, **aviso e voz**, **permissão do aviso**, **testar leitura** (ouve a voz e vê o
@@ -102,15 +109,17 @@ lista do mês, **separado por dia**. Toque num turno para ver os detalhes e:
 **Por oferta:**
 - **R$/km** = valor ÷ (km até o passageiro + km da viagem).
 - **R$/h** = valor ÷ (minutos de busca + viagem) × 60.
-- **Lucro** = valor − (km até o passageiro + km da viagem) ÷ consumo × preço do combustível.
+- **Lucro** = valor − (km até o passageiro + km da viagem) × custo por km
+  (custo por km = preço do combustível ÷ consumo + manutenção por km).
 - Cada critério vira ✅ (bom), ⚠️ (no limite: até X% do limite) ou ❌ (ruim). A borda do aviso tem a
   cor do pior critério. Nota baixa só deixa amarelo.
 
 **Por turno:**
 - **Km total** = odômetro final − odômetro inicial.
 - **Km de deslocamento** = km total − km das corridas (o que você rodou sem ser pago).
-- **Combustível** = km total ÷ consumo × preço. (Com o turno aberto, é estimado só pelas corridas.)
-- **Lucro real** = soma das corridas − combustível. **Lucro/h** = lucro ÷ horas do turno.
+- **Combustível** = km total ÷ consumo × preço. **Manutenção** = km total × manutenção por km.
+  (Com o turno aberto, os dois são estimados só pelos km das corridas.)
+- **Lucro real** = soma das corridas − combustível − manutenção. **Lucro/h** = lucro ÷ horas do turno.
 - **Aproveitamento pago** = km das corridas ÷ km total.
 
 ## 6. Calibrar a leitura (modo diagnóstico)

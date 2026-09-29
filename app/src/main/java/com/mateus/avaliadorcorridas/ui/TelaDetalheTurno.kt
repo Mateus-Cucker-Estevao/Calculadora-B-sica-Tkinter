@@ -85,7 +85,7 @@ fun TelaDetalheTurno(id: Long, onVoltar: () -> Unit, modifier: Modifier = Modifi
             LinhaMetricas(
                 "Faturamento" to reais(r.faturamento),
                 "Combustível" to reais(r.custoCombustivel),
-                "Lucro/h" to (r.lucroPorHora?.let { reais(it) } ?: "–"),
+                "Manutenção" to reais(r.custoManutencao),
             )
             LinhaMetricas(
                 "Km total" to (r.kmTotal?.let { km(it) } ?: "–"),
@@ -93,13 +93,13 @@ fun TelaDetalheTurno(id: Long, onVoltar: () -> Unit, modifier: Modifier = Modifi
                 "Km deslocamento" to (r.kmDeslocamento?.let { km(it) } ?: "–"),
             )
             LinhaMetricas(
+                "Lucro/h" to (r.lucroPorHora?.let { reais(it) } ?: "–"),
                 "Aproveitamento" to (r.aproveitamento?.let { porcentagem(it) } ?: "–"),
-                "Ofertas vistas" to turno.ofertasVistas.toString(),
-                "Corridas" to r.corridas.toString(),
+                "Corridas" to "${r.corridas} de ${turno.ofertasVistas}",
             )
             if (turno.aberto) {
                 Text(
-                    "Turno aberto: o combustível está estimado só pelos km das corridas. " +
+                    "Turno aberto: combustível e manutenção estão estimados só pelos km das corridas. " +
                         "O valor real sai quando você finalizar com o km do odômetro.",
                     color = Cores.contorno, fontSize = 12.sp,
                 )
@@ -210,6 +210,7 @@ private fun CartaoDadosTurno(turno: Turno) {
     var odoFinal by remember(turno.id) { mutableStateOf(turno.odometroFinal?.let { numero(it, 1) } ?: "") }
     var consumo by remember(turno.id) { mutableStateOf(numero(turno.consumoKmL, 1)) }
     var preco by remember(turno.id) { mutableStateOf(numero(turno.precoLitro, 2)) }
+    var manutencao by remember(turno.id) { mutableStateOf(numero(turno.manutencaoPorKm, 2)) }
 
     Cartao {
         TituloSecao("Dados do turno")
@@ -221,16 +222,19 @@ private fun CartaoDadosTurno(turno: Turno) {
             CampoNumero("Consumo (km/l)", consumo, Modifier.weight(1f)) { consumo = it }
             CampoNumero("Combustível (R$/L)", preco, Modifier.weight(1f)) { preco = it }
         }
+        CampoNumero("Manutenção (R$ por km)", manutencao) { manutencao = it }
         Button(onClick = {
             val ini = lerNumero(odoInicial)
             val fim = if (turno.aberto) null else lerNumero(odoFinal)
             val c = lerNumero(consumo)
             val p = lerNumero(preco)
+            val m = lerNumero(manutencao)
             val erro = when {
                 ini == null || ini < 0 -> "Odômetro inicial inválido"
                 !turno.aberto && (fim == null || fim < ini) -> "O odômetro final precisa ser maior ou igual ao inicial"
                 c == null || c <= 0 -> "Consumo inválido"
                 p == null || p < 0 -> "Preço do combustível inválido"
+                m == null || m < 0 -> "Manutenção inválida"
                 else -> null
             }
             if (erro != null) {
@@ -238,7 +242,10 @@ private fun CartaoDadosTurno(turno: Turno) {
             } else {
                 RepositorioTurnos.salvar(
                     ctx,
-                    turno.copy(odometroInicial = ini!!, odometroFinal = fim ?: turno.odometroFinal, consumoKmL = c!!, precoLitro = p!!),
+                    turno.copy(
+                        odometroInicial = ini!!, odometroFinal = fim ?: turno.odometroFinal,
+                        consumoKmL = c!!, precoLitro = p!!, manutencaoPorKm = m!!,
+                    ),
                 )
                 Toast.makeText(ctx, "Turno atualizado", Toast.LENGTH_SHORT).show()
             }
@@ -248,7 +255,7 @@ private fun CartaoDadosTurno(turno: Turno) {
 
 @Composable
 private fun LinhaCorrida(c: Corrida, turno: Turno, onEditar: () -> Unit, onExcluir: () -> Unit) {
-    val lucro = c.valor - Calculos.custoCombustivel(c.km, turno.consumoKmL, turno.precoLitro)
+    val lucro = c.valor - Calculos.custoRodar(c.km, turno.consumoKmL, turno.precoLitro, turno.manutencaoPorKm)
     Row(
         Modifier.fillMaxWidth().background(Cores.containerAlto, RoundedCornerShape(12.dp)).padding(start = 12.dp),
         verticalAlignment = Alignment.CenterVertically,

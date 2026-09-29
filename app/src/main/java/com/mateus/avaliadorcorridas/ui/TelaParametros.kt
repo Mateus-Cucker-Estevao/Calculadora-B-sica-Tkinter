@@ -105,29 +105,75 @@ private fun CartaoVeiculo(cfg: Configuracao, onSalvar: (Configuracao) -> Unit) {
     val ctx = LocalContext.current
     var consumo by remember { mutableStateOf(numero(cfg.consumoKmL, 1)) }
     var preco by remember { mutableStateOf(numero(cfg.precoLitro, 2)) }
-    val custoKm = lerNumero(consumo)?.let { c -> lerNumero(preco)?.let { p -> Calculos.custoPorKm(c, p) } }
+    var manutencao by remember { mutableStateOf(numero(cfg.manutencaoPorKm, 2)) }
+    var calculando by remember { mutableStateOf(false) }
+
+    val c = lerNumero(consumo)
+    val p = lerNumero(preco)
+    val m = lerNumero(manutencao)
+    val combustivelKm = if (c != null && p != null) Calculos.custoPorKm(c, p) else null
 
     Cartao {
-        TituloSecao("⛽ Veículo e combustível")
+        TituloSecao("🚗 Custos do carro")
+
+        // ---- Combustível ----
+        Rotulo("Combustível")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CampoNumero("Consumo (km/l)", consumo, Modifier.weight(1f)) { consumo = it }
             CampoNumero("Combustível (R$/L)", preco, Modifier.weight(1f)) { preco = it }
         }
+
+        // ---- Manutenção ----
+        Spacer(Modifier.padding(2.dp))
+        Rotulo("Manutenção (pneus, óleo, revisões, freios, limpeza...)")
+        CampoNumero("Manutenção (R$ por km)", manutencao) { manutencao = it }
         Text(
-            "Custo de combustível: ${custoKm?.let { reais(it) } ?: "–"} por km. É com ele que o app calcula o " +
-                "lucro real de cada oferta e dos turnos.",
+            "💡 Recomendado para carro popular 1.0 (como o HB20): R\$ 0,20 a R\$ 0,30 por km.",
+            color = Cores.amarelo, fontSize = 13.sp,
+        )
+        Text(
+            "Como calcular: some quanto cada item custa e divida pelos km que ele dura. " +
+                "Ex.: pneus de R\$ 1.400 que duram 40.000 km = R\$ 0,035/km. Faça isso para cada item e some tudo. " +
+                "Ou, mais simples: some tudo que gastou com o carro em 6 meses e divida pelos km rodados nesse tempo " +
+                "(R\$ 1.500 ÷ 6.000 km = R\$ 0,25/km).",
             color = Cores.textoVariante, fontSize = 13.sp,
         )
+        OutlinedButton(onClick = { calculando = true }, modifier = Modifier.fillMaxWidth()) {
+            Text("🧮 Calcular manutenção por km")
+        }
+
+        // ---- Total ----
+        Row(
+            Modifier.fillMaxWidth().background(Cores.containerAlto, RoundedCornerShape(12.dp)).padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+        ) {
+            Metrica("Combustível", combustivelKm?.let { reais(it) } ?: "–")
+            Metrica("Manutenção", m?.let { reais(it) } ?: "–")
+            Metrica("Total por km", if (combustivelKm != null && m != null) reais(combustivelKm + m) else "–", Cores.amarelo)
+        }
+        Text(
+            "O total por km é descontado de cada oferta e de cada turno para chegar no lucro real.",
+            color = Cores.contorno, fontSize = 12.sp,
+        )
+
         Button(onClick = {
-            val c = lerNumero(consumo)
-            val p = lerNumero(preco)
-            if (c == null || c <= 0 || p == null || p < 0) {
-                toast(ctx, "Confira o consumo e o preço")
+            if (c == null || c <= 0 || p == null || p < 0 || m == null || m < 0) {
+                toast(ctx, "Confira consumo, preço e manutenção")
             } else {
-                onSalvar(cfg.copy(consumoKmL = c, precoLitro = p))
-                toast(ctx, "Veículo salvo. Vale para os próximos turnos.")
+                onSalvar(cfg.copy(consumoKmL = c, precoLitro = p, manutencaoPorKm = m))
+                toast(ctx, "Custos salvos. Valem para os próximos turnos.")
             }
-        }, modifier = Modifier.fillMaxWidth()) { Text("Salvar veículo") }
+        }, modifier = Modifier.fillMaxWidth()) { Text("Salvar custos do carro") }
+    }
+
+    if (calculando) {
+        DialogoManutencao(
+            onCancelar = { calculando = false },
+        ) { porKm ->
+            manutencao = numero(porKm, 2)
+            calculando = false
+            toast(ctx, "Manutenção calculada: ${reais(porKm)}/km. Toque em Salvar custos do carro.")
+        }
     }
 }
 

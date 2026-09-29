@@ -101,6 +101,7 @@ object RepositorioTurnos {
         t.odometroFinal?.let { put("odometroFinal", it) }
         put("consumoKmL", t.consumoKmL)
         put("precoLitro", t.precoLitro)
+        put("manutencaoPorKm", t.manutencaoPorKm)
         put("ofertasVistas", t.ofertasVistas)
         put("corridas", JSONArray().apply { t.corridas.forEach { put(corridaParaJson(it)) } })
     }
@@ -127,6 +128,8 @@ object RepositorioTurnos {
             odometroFinal = if (o.has("odometroFinal")) o.getDouble("odometroFinal") else null,
             consumoKmL = o.optDouble("consumoKmL", 11.0),
             precoLitro = o.optDouble("precoLitro", 6.29),
+            // Turnos antigos (antes da manutenção existir) ficam com 0, para não mudar o passado.
+            manutencaoPorKm = o.optDouble("manutencaoPorKm", 0.0),
             ofertasVistas = o.optInt("ofertasVistas", 0),
             corridas = (0 until corridas.length()).map { corridaDeJson(corridas.getJSONObject(it)) },
         )
