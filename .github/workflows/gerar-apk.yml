@@ -1,10 +1,18 @@
 # Gera o APK automaticamente no GitHub a cada "push".
-# Para baixar: aba "Actions" do repositório → clique na execução mais recente → "Artifacts".
+# Para baixar:
+#   - direto (mais fácil, até pelo celular): aba "Releases" → "APK mais recente" → AvaliadorCorridas.apk
+#     https://github.com/Mateus-Cucker-Estevao/Calculadora-B-sica-Tkinter/releases/tag/apk-mais-recente
+#   - ou: aba "Actions" → execução mais recente → "Artifacts" (vem em .zip, precisa estar logado)
 name: Gerar APK
 
 on:
   push:
+    branches: ["**"]
   workflow_dispatch:
+
+# Permite publicar o APK na release "APK mais recente".
+permissions:
+  contents: write
 
 jobs:
   apk:
@@ -31,3 +39,16 @@ jobs:
         with:
           name: AvaliadorCorridas-apk
           path: AvaliadorCorridas.apk
+
+      # Substitui a release "APK mais recente" pelo APK desta execução.
+      - name: Publicar na release "APK mais recente"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSAO=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          gh release delete apk-mais-recente --yes --cleanup-tag || true
+          gh release create apk-mais-recente AvaliadorCorridas.apk \
+            --title "APK mais recente (versão $VERSAO)" \
+            --notes "Gerado automaticamente a partir do commit ${GITHUB_SHA::7} (branch ${GITHUB_REF_NAME}). Toque em AvaliadorCorridas.apk para baixar." \
+            --target "$GITHUB_SHA" \
+            --prerelease

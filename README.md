@@ -29,8 +29,11 @@ inclusive os de deslocamento sem passageiro.
 
 O GitHub gera o APK sozinho a cada mudança no código:
 
-1. Abra o repositório no GitHub → aba **Actions** → execução mais recente **"Gerar APK"** (✅ verde).
-2. Em **Artifacts**, baixe **AvaliadorCorridas-apk** (um `.zip`) e extraia o `AvaliadorCorridas.apk`.
+1. **Direto, pelo celular:** abra
+   [Releases → APK mais recente](https://github.com/Mateus-Cucker-Estevao/Calculadora-B-sica-Tkinter/releases/tag/apk-mais-recente)
+   e toque em **AvaliadorCorridas.apk**. (Sempre tem a última versão gerada.)
+2. Ou: aba **Actions** → execução mais recente **"Gerar APK"** → **Artifacts** → `AvaliadorCorridas-apk`
+   (vem em `.zip` e precisa estar logado).
 3. Instale:
    - **Pelo computador (recomendado):** ative a *Depuração USB* no celular (Configurações → Sobre o
      telefone → toque 7 vezes em "Número da versão" → Opções do desenvolvedor → Depuração USB),
