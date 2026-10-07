@@ -34,7 +34,9 @@ import com.mateus.avaliadorcorridas.dados.LogDiagnostico
 import com.mateus.avaliadorcorridas.dados.Preferencias
 import com.mateus.avaliadorcorridas.dados.RepositorioTurnos
 import com.mateus.avaliadorcorridas.regras.Avaliador
+import com.mateus.avaliadorcorridas.regras.DetectorCorridas
 import com.mateus.avaliadorcorridas.regras.ExtratorOferta
+import com.mateus.avaliadorcorridas.regras.NovaCorrida
 import com.mateus.avaliadorcorridas.regras.Oferta
 import com.mateus.avaliadorcorridas.regras.RegrasExtracao
 import com.mateus.avaliadorcorridas.ui.MainActivity
@@ -49,8 +51,8 @@ import com.mateus.avaliadorcorridas.ui.MainActivity
  * Com o texto reconhecido ele:
  *   1. identifica a oferta (RegrasExtracao / ExtratorOferta);
  *   2. avalia com seus parâmetros, fala e mostra o aviso flutuante;
- *   3. quando a oferta some e aparece a tela de corrida em andamento, registra a
- *      corrida no turno aberto.
+ *   3. acompanha as telas da corrida ("Encontro com...", "Iniciar UberX", "Encerrar UberX")
+ *      e registra cada corrida no turno aberto (DetectorCorridas).
  *
  * IMPORTANTE: o app APENAS LÊ. Ele não toca na tela, não aceita nem recusa nada.
  */
@@ -97,11 +99,11 @@ class MonitorService : Service() {
     private var ultimaLeituraTinhaOferta = false
     private var tentativasSemViagem = 0
     private var ultimaChaveOferta = ""
+    private var ultimoValorAnunciado: Double? = null
     private var ultimaOfertaEm = 0L
 
-    // Para detectar corrida aceita
-    private var ofertaPendente: Oferta? = null
-    private var ofertaPendenteEm = 0L
+    /** Acompanha as telas da corrida (busca, viagem, fim) para registrar as corridas do turno. */
+    private val detector = DetectorCorridas()
 
     // Diagnóstico
     private var ultimoTextoNoLog = ""
@@ -270,12 +272,11 @@ class MonitorService : Service() {
 
         if (oferta.ehOferta) {
             ofertaVistaEm = agora
-            ofertaPendente = oferta
-            ofertaPendenteEm = agora
+            detector.ofertaVista(oferta, agora)
             avaliarEAvisar(oferta, cfg)
         } else {
             tentativasSemViagem = 0
-            verificarCorridaAceita(linhas, cfg, agora)
+            detector.telaLida(linhas, agora)?.let { registrarCorrida(it, cfg) }
         }
     }
 
@@ -288,8 +289,11 @@ class MonitorService : Service() {
         tentativasSemViagem = 0
 
         val agora = SystemClock.elapsedRealtime()
-        if (oferta.chave == ultimaChaveOferta && agora - ultimaOfertaEm < NAO_REPETIR_MESMA_OFERTA_MS) return
+        val recente = agora - ultimaOfertaEm < NAO_REPETIR_MESMA_OFERTA_MS
+        // Mesma oferta (mesma chave, ou mesmo valor lido de novo com algum erro): não avisa outra vez.
+        if (recente && (oferta.chave == ultimaChaveOferta || oferta.valor == ultimoValorAnunciado)) return
         ultimaChaveOferta = oferta.chave
+        ultimoValorAnunciado = oferta.valor
         ultimaOfertaEm = agora
 
         RepositorioTurnos.alterarTurnoAberto(this) { it.copy(ofertasVistas = it.ofertasVistas + 1) }
@@ -300,29 +304,26 @@ class MonitorService : Service() {
         if (cfg.vozAtiva) falador.falar(r.fala)
     }
 
-    /** Depois que a oferta some: se aparecer a tela de corrida em andamento, a oferta foi aceita. */
-    private fun verificarCorridaAceita(linhas: List<String>, cfg: Configuracao, agora: Long) {
-        val o = ofertaPendente ?: return
-        if (agora - ofertaPendenteEm > RegrasExtracao.JANELA_CORRIDA_ACEITA_MS) {
-            ofertaPendente = null
-            return
-        }
-        if (!ExtratorOferta.pareceCorridaAceita(linhas)) return
-        ofertaPendente = null
-
+    /** Uma corrida começou ("Encontro com..."): registra no turno aberto. */
+    private fun registrarCorrida(nova: NovaCorrida, cfg: Configuracao) {
+        val o = nova.oferta
         val corrida = Corrida(
             id = RepositorioTurnos.novoId(),
             hora = System.currentTimeMillis(),
-            valor = o.valor ?: 0.0,
-            kmBusca = o.kmAtePassageiro ?: 0.0,
-            kmViagem = o.kmViagem ?: 0.0,
-            minBusca = o.minutosAtePassageiro ?: 0,
-            minViagem = o.minutosViagem ?: 0,
-            nota = o.nota,
+            valor = o?.valor ?: 0.0,
+            kmBusca = o?.kmAtePassageiro ?: 0.0,
+            kmViagem = o?.kmViagem ?: 0.0,
+            minBusca = o?.minutosAtePassageiro ?: 0,
+            minViagem = o?.minutosViagem ?: 0,
+            nota = o?.nota,
+            // Sem oferta lida (ex.: a oferta chegou com o app aberto): você completa o valor no turno.
+            precisaRevisar = o == null || o.kmViagem == null,
         )
         RepositorioTurnos.alterarTurnoAberto(this) { it.copy(corridas = it.corridas + corrida) }
         if (cfg.modoDiagnostico) {
-            LogDiagnostico.registrarNota(this, "CORRIDA ACEITA registrada no turno: ${Avaliador.reais(corrida.valor)}, ${Avaliador.km(corrida.km)} km")
+            val nota = if (o == null) "CORRIDA registrada SEM oferta lida (para revisar no turno)"
+            else "CORRIDA registrada no turno: ${Avaliador.reais(corrida.valor)}, ${Avaliador.km(corrida.km)} km"
+            LogDiagnostico.registrarNota(this, nota)
         }
     }
 
@@ -330,7 +331,7 @@ class MonitorService : Service() {
         val junto = linhas.joinToString("\n")
         // A tela é lida a cada segundo; para o log não crescer demais, registramos toda
         // oferta e toda tela de corrida, e as outras telas no máximo a cada 10 s.
-        val importante = oferta.ehOferta || ExtratorOferta.pareceCorridaAceita(linhas)
+        val importante = oferta.ehOferta || ExtratorOferta.faseDaTela(linhas) != null
         if (junto == ultimoTextoNoLog || (!importante && agora - ultimoLogEm < INTERVALO_LOG_MS)) return
         ultimoTextoNoLog = junto
         ultimoLogEm = agora

@@ -3,12 +3,9 @@ package com.mateus.avaliadorcorridas
 import com.mateus.avaliadorcorridas.dados.Corrida
 import com.mateus.avaliadorcorridas.dados.Turno
 import com.mateus.avaliadorcorridas.regras.Calculos
-import com.mateus.avaliadorcorridas.regras.ExtratorOferta
 import com.mateus.avaliadorcorridas.regras.ItemManutencao
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Testes das contas do turno (km de deslocamento, combustível, lucro por hora). */
@@ -104,13 +101,5 @@ class CalculosTest {
         // Os valores de exemplo do app dão ~R$ 0,27/km, dentro da recomendação (R$ 0,20 a 0,30).
         assertEquals(0.27, Calculos.manutencaoPorKm(Calculos.ITENS_MANUTENCAO_EXEMPLO), 0.01)
         assertEquals(0.8218, Calculos.custoPorKm(11.0, 6.29, 0.25), 0.001) // 0,5718 + 0,25
-    }
-
-    @Test
-    fun detectaTelaDeCorridaAceita() {
-        assertTrue(ExtratorOferta.pareceCorridaAceita(listOf("A caminho do passageiro", "Rua X")))
-        assertTrue(ExtratorOferta.pareceCorridaAceita(listOf("DESLIZE PARA INICIAR VIAGEM")))
-        assertFalse(ExtratorOferta.pareceCorridaAceita(listOf("Procurando viagens", "Você está online")))
-        assertFalse(ExtratorOferta.pareceCorridaAceita(listOf("Viagem de 18 minutos (8.5 km)", "Aceitar")))
     }
 }

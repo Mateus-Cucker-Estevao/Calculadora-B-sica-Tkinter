@@ -152,7 +152,7 @@ fun TelaDetalheTurno(id: Long, onVoltar: () -> Unit, modifier: Modifier = Modifi
             corrida = original,
             onCancelar = { adicionandoCorrida = false; editandoCorrida = null },
         ) { valor, kmBusca, kmViagem ->
-            val nova = original?.copy(valor = valor, kmBusca = kmBusca, kmViagem = kmViagem, manual = true)
+            val nova = original?.copy(valor = valor, kmBusca = kmBusca, kmViagem = kmViagem, manual = true, precisaRevisar = false)
                 ?: Corrida(
                     id = RepositorioTurnos.novoId(),
                     hora = turno.fim ?: System.currentTimeMillis(),
@@ -265,6 +265,12 @@ private fun LinhaCorrida(c: Corrida, turno: Turno, onEditar: () -> Unit, onExclu
                 "${hora(c.hora)} · ${reais(c.valor)}${if (c.manual) " ✎" else ""}",
                 color = Cores.texto, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
             )
+            if (c.precisaRevisar) {
+                Text(
+                    "⚠️ Oferta não lida por completo: toque no lápis e preencha valor e km",
+                    color = Cores.amarelo, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                )
+            }
             Text(
                 "${km(c.km)} (busca ${numero(c.kmBusca, 1)} + viagem ${numero(c.kmViagem, 1)}) · " +
                     "${reais(c.valor / c.km.coerceAtLeast(0.1))}/km",

@@ -42,8 +42,8 @@ object RegrasExtracao {
      */
     private const val DIST = """(?<km>\d+(?:[.,]\d+)?)\s*(?<un>km|mi|m)\b"""
 
-    /** "8 min (2,3 km)" — tempo seguido da distância entre parênteses. */
-    private const val TEMPO_DIST = """$TEMPO\s*\(\s*$DIST\s*\)"""
+    /** "8 min (2,3 km)" — tempo seguido da distância entre parênteses (o ")" final é opcional). */
+    private const val TEMPO_DIST = """$TEMPO\s*\(\s*$DIST\s*\)?"""
 
     // ---------------------------------------------------------------
     // 1) VALOR DA CORRIDA
@@ -138,26 +138,56 @@ object RegrasExtracao {
     const val BLOQUEIO_PROCURA_APOS_VIAGEM = true
 
     // ---------------------------------------------------------------
-    // 4b) CORRIDA ACEITA
+    // 4b) TELAS DA CORRIDA (calibrado com o log real de 05/10/2026)
+    // ---------------------------------------------------------------
+    //
+    // Depois de aceitar uma oferta, o Uber mostra, nesta ordem:
+    //   1. indo buscar:   "Encontro com [nome]", "Estou a caminho", "Cheguei"
+    //   2. no embarque:   "Iniciar UberX"
+    //   3. em viagem:     "Encerrar UberX", "Destino de [nome]", "A caminho da última parada"
+    //   4. fim:           "Como foi a viagem?", "Avaliar usuário", depois "Procurando viagens"
+    //
+    // Quando o app vê a tela 1 (ou a 3, se perdeu a 1), registra uma corrida no turno usando
+    // a última oferta lida até [JANELA_OFERTA_ACEITA_MS] antes. Se não leu nenhuma oferta,
+    // registra a corrida "para revisar" (você completa o valor no turno).
+    //
+    // Compara sem acentos e sem diferenciar maiúsculas. Alguns trechos começam sem a primeira
+    // letra ("niciar uber", "ncerrar uber") porque a leitura da imagem às vezes troca o "I" por "l".
+
+    val TELAS_BUSCANDO_PASSAGEIRO = listOf("encontro com", "niciar uber", "estou a caminho", "cheguei")
+
+    val TELAS_EM_VIAGEM = listOf(
+        "ncerrar uber", "destino de ",
+        "a caminho da primeira parada", "a caminho da ultima parada", "a caminho da proxima parada",
+    )
+
+    val TELAS_SEM_CORRIDA = listOf(
+        "como foi a viagem", "avaliar usuario", "procurando viagens", "voce esta online", "voce esta offline",
+    )
+
+    /** A oferta aceita aparece até alguns segundos antes de "Encontro com..." (no log: 10 a 17 s). */
+    const val JANELA_OFERTA_ACEITA_MS = 3 * 60_000L
+
+    /** Sem nenhuma tela de corrida por este tempo, o app considera que não há corrida em andamento. */
+    const val SEM_TELA_DE_CORRIDA_MS = 30 * 60_000L
+
+    // ---------------------------------------------------------------
+    // 4c) PROTEÇÃO CONTRA ERROS DA LEITURA POR IMAGEM
     // ---------------------------------------------------------------
 
     /**
-     * Como o app sabe que você ACEITOU uma oferta: depois que a oferta some da tela,
-     * se aparecer alguma destas palavras (tela de corrida em andamento) em até
-     * [JANELA_CORRIDA_ACEITA_MS], a oferta vira uma corrida do turno.
-     *
-     * ⚠️ Ainda não calibrado com o texto real do Uber. Se o app não registrar suas
-     * corridas, ligue o modo diagnóstico, aceite uma corrida e veja no log quais
-     * palavras aparecem na tela depois de aceitar. Depois ajuste esta lista.
-     * (Compara sem acentos e sem diferenciar maiúsculas.)
+     * Valores fora desta faixa são considerados erro de leitura e ignorados
+     * (ex.: "R$1l,96/km" lido como R$ 1,00).
      */
-    val PALAVRAS_CORRIDA_ACEITA = listOf(
-        "iniciar viagem", "iniciar a viagem", "concluir viagem", "concluir a viagem",
-        "encerrar viagem", "finalizar viagem", "a caminho", "cheguei", "chegou ao local",
-        "pegar passageiro", "buscar passageiro", "deslize para",
-    )
+    const val VALOR_MINIMO_VALIDO = 3.0
+    const val VALOR_MAXIMO_VALIDO = 400.0
 
-    const val JANELA_CORRIDA_ACEITA_MS = 90_000L
+    /**
+     * A leitura às vezes perde a vírgula: "R$ 1552" (era R$ 15,52) ou "(33 km)" (era 3,3 km).
+     * Valor sem vírgula acima do máximo é dividido por 100. Distância sem vírgula que daria
+     * uma velocidade acima desta (km ÷ minutos) é dividida por 10.
+     */
+    const val VELOCIDADE_MAXIMA_KMH = 150.0
 
     // ---------------------------------------------------------------
     // 5) O QUE CONTA COMO "OFERTA"

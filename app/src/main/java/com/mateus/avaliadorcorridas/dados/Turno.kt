@@ -15,6 +15,8 @@ data class Corrida(
     val minViagem: Int = 0,
     val nota: Double? = null,
     val manual: Boolean = false,
+    /** true quando o app registrou a corrida mas não leu a oferta: o valor precisa ser preenchido. */
+    val precisaRevisar: Boolean = false,
 ) {
     val km: Double get() = kmBusca + kmViagem
 }

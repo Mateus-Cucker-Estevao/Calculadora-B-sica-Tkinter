@@ -116,6 +116,7 @@ object RepositorioTurnos {
         put("minViagem", c.minViagem)
         c.nota?.let { put("nota", it) }
         put("manual", c.manual)
+        put("precisaRevisar", c.precisaRevisar)
     }
 
     private fun turnoDeJson(o: JSONObject): Turno {
@@ -145,5 +146,6 @@ object RepositorioTurnos {
         minViagem = o.optInt("minViagem", 0),
         nota = if (o.has("nota")) o.getDouble("nota") else null,
         manual = o.optBoolean("manual", false),
+        precisaRevisar = o.optBoolean("precisaRevisar", false),
     )
 }

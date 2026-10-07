@@ -405,6 +405,13 @@ private fun CartaoTurnoAberto(
             "Ofertas vistas: ${turno.ofertasVistas} · Odômetro inicial: ${numero(turno.odometroInicial, 1)} km",
             color = Cores.contorno, fontSize = 12.sp,
         )
+        val revisar = turno.corridas.count { it.precisaRevisar }
+        if (revisar > 0) {
+            Text(
+                "⚠️ $revisar corrida(s) sem oferta lida: revise em Detalhes",
+                color = Cores.amarelo, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+            )
+        }
         if (lendo) {
             Text("✅ Lendo as ofertas pela imagem da tela", color = Cores.verde, fontSize = 13.sp)
         } else {
@@ -506,6 +513,10 @@ private fun CartaoTurno(t: Turno, r: ResumoTurno, onClick: () -> Unit) {
                 "${r.corridas} corridas · ${km(r.kmTotal ?: r.kmCorridas)}$vazio",
                 color = Cores.contorno, fontSize = 12.sp,
             )
+            val revisar = t.corridas.count { it.precisaRevisar }
+            if (revisar > 0) {
+                Text("⚠️ $revisar corrida(s) para revisar", color = Cores.amarelo, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(reais(r.lucro), color = corLucro(r.lucro), fontSize = 16.sp, fontWeight = FontWeight.Bold)

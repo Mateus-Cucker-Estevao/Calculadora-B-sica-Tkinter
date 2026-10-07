@@ -72,20 +72,37 @@ object ExtratorOferta {
         )
     }
 
-    /** A tela parece ser de uma corrida em andamento? (veja PALAVRAS_CORRIDA_ACEITA) */
-    fun pareceCorridaAceita(linhas: List<String>): Boolean {
+    /**
+     * Em que parte da corrida a tela está (veja TELAS_* em RegrasExtracao), ou null se a tela
+     * não diz nada sobre isso (mapa, menus...).
+     */
+    fun faseDaTela(linhas: List<String>): FaseCorrida? {
         val texto = normalizar(linhas.joinToString(" "))
-        return RegrasExtracao.PALAVRAS_CORRIDA_ACEITA.any { texto.contains(normalizar(it)) }
+        fun tem(lista: List<String>) = lista.any { texto.contains(normalizar(it)) }
+        return when {
+            tem(RegrasExtracao.TELAS_EM_VIAGEM) -> FaseCorrida.EM_VIAGEM
+            tem(RegrasExtracao.TELAS_BUSCANDO_PASSAGEIRO) -> FaseCorrida.BUSCANDO_PASSAGEIRO
+            tem(RegrasExtracao.TELAS_SEM_CORRIDA) -> FaseCorrida.SEM_CORRIDA
+            else -> null
+        }
     }
 
-    /** Último valor antes da distância até o passageiro; se não houver, o primeiro valor da tela. */
+    /**
+     * Último valor válido antes da distância até o passageiro; se não houver, o primeiro valor
+     * válido da tela. Corrige vírgula perdida ("R$ 1552" → 15,52) e ignora valores absurdos.
+     */
     private fun extrairValor(texto: String, posicaoBusca: Int?): Double? {
-        val valores = RegrasExtracao.VALOR.findAll(texto).toList()
-        if (valores.isEmpty()) return null
+        val validos = RegrasExtracao.VALOR.findAll(texto).mapNotNull { m ->
+            val bruto = grupo(m, "valor") ?: return@mapNotNull null
+            var v = numero(bruto) ?: return@mapNotNull null
+            if (!bruto.contains(',') && !bruto.contains('.') && v > RegrasExtracao.VALOR_MAXIMO_VALIDO) v /= 100
+            if (v < RegrasExtracao.VALOR_MINIMO_VALIDO || v > RegrasExtracao.VALOR_MAXIMO_VALIDO) null else m to v
+        }.toList()
+        if (validos.isEmpty()) return null
         val escolhido = posicaoBusca
-            ?.let { pos -> valores.lastOrNull { it.range.first < pos } }
-            ?: valores.first()
-        return grupo(escolhido, "valor")?.let { numero(it) }
+            ?.let { pos -> validos.lastOrNull { it.first.range.first < pos } }
+            ?: validos.first()
+        return escolhido.second
     }
 
     private fun extrairDestino(texto: String, viagem: MatchResult?): String? {
@@ -115,12 +132,22 @@ object ExtratorOferta {
         try { m.groups[nome]?.value } catch (e: IllegalArgumentException) { null }
 
     private fun km(m: MatchResult): Double? {
-        val v = grupo(m, "km")?.let { numero(it) } ?: return null
-        return when (grupo(m, "un")?.lowercase()) {
+        val bruto = grupo(m, "km") ?: return null
+        val v = numero(bruto) ?: return null
+        val kmLido = when (grupo(m, "un")?.lowercase()) {
             "m" -> v / 1000.0
             "mi" -> v * 1.609
             else -> v
         }
+        // Vírgula perdida na leitura: "8 minutos (33 km)" daria 247 km/h; o certo é 3,3 km.
+        val minutos = grupo(m, "min")?.toIntOrNull()
+        val semVirgula = !bruto.contains(',') && !bruto.contains('.')
+        if (minutos != null && minutos > 0 && semVirgula && kmLido >= 10 &&
+            kmLido / (minutos / 60.0) > RegrasExtracao.VELOCIDADE_MAXIMA_KMH
+        ) {
+            return kmLido / 10
+        }
+        return kmLido
     }
 
     /** "12,50" ou "12.50" → 12.5 ; "1.234,56" → 1234.56 */

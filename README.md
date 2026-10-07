@@ -130,14 +130,20 @@ As regras de leitura ficam em
 | O quê | Onde |
 |---|---|
 | Valor, distâncias, destino, nota | `VALOR`, `DISTANCIA_ATE_PASSAGEIRO`, `DISTANCIA_VIAGEM`, `DESTINO_COM_ROTULO`, `NOTA` |
-| **Corrida aceita** (tela depois de aceitar) | `PALAVRAS_CORRIDA_ACEITA` ⚠️ ainda não calibrado |
+| **Telas da corrida** (busca, viagem, fim) | `TELAS_BUSCANDO_PASSAGEIRO`, `TELAS_EM_VIAGEM`, `TELAS_SEM_CORRIDA` ✅ calibrado (log de 05/10/2026) |
+| Erros de leitura (vírgula perdida, valores absurdos) | `VALOR_MINIMO_VALIDO`, `VALOR_MAXIMO_VALIDO`, `VELOCIDADE_MAXIMA_KMH` |
+
+**Como as corridas entram no turno:** depois de aceitar, o Uber mostra **"Encontro com [nome]"** →
+**"Iniciar UberX"** → **"Encerrar UberX"** / **"Destino de [nome]"** → **"Como foi a viagem?"**. Quando o
+app vê "Encontro com...", registra a corrida com a última oferta lida (até 3 min antes). Se não leu a
+oferta, a corrida entra com ⚠️ **para revisar**: abra o turno e preencha valor e km no lápis.
 
 Para calibrar:
 1. Em Parâmetros, ligue o **Modo diagnóstico** e apague o log.
 2. Faça um turno normal: aceite e conclua pelo menos uma corrida.
-3. Em **Ver log**, procure as telas depois da oferta aceita. Linhas `##### CORRIDA ACEITA` mostram
-   quando o app registrou uma corrida. Se nenhuma apareceu, veja quais palavras a tela de corrida
-   mostra e coloque em `PALAVRAS_CORRIDA_ACEITA` (ou mande o log para ajustar).
+3. Em **Ver log**, linhas `##### CORRIDA registrada` mostram quando o app registrou uma corrida.
+   Se o Uber mudar as telas, veja as palavras novas no log e ajuste as listas `TELAS_*`
+   (ou mande o log para ajustar).
 4. Use **Testar leitura** para conferir textos de oferta sem sair de carro.
 5. Terminou? Desligue o diagnóstico e **apague** o log (pode conter o nome do passageiro).
 
@@ -181,5 +187,6 @@ app/src/test/…              ← testes automáticos (leitura, avaliação e co
 | Não aparece o aviso | Parâmetros → "Aviso por cima do Uber" → permitir. |
 | "Leitura parada" | Toque em **Retomar leitura** e autorize "Tela inteira". |
 | Não fala nada | Confira "Aviso por voz", o volume de mídia e a voz em português. |
-| Corridas não entram no turno | Calibre `PALAVRAS_CORRIDA_ACEITA` (seção 6) ou adicione à mão no turno. |
+| Corridas não entram no turno | Mande um log (seção 6) ou adicione à mão no turno. |
+| Corrida com ⚠️ "para revisar" | O app não leu a oferta (ex.: chegou com o app aberto). Preencha valor e km no turno. |
 | O serviço para sozinho (Xiaomi/Samsung) | Configurações → Apps → Avaliador → Bateria → **Sem restrições**. |
